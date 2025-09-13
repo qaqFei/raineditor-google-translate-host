@@ -423,12 +423,14 @@
 <script src="./js/utils.js"></script>
 
 <script>
-    try { isTranslating = pywebview.api.getIsTranslating(); }
-    catch { isTranslating = false; }
 
     (() => {
         const orifetch = window.fetch;
         window.fetch = async function(...args) {
+            var isTranslating = false;
+            try { isTranslating = await pywebview.api.getIsTranslating(); }
+            catch { }
+    
             if (args.length >= 1 && args[0].startsWith("/api") && isTranslating) {
                 const content = new Blob([new Uint8Array(await pywebview.api.fetchLocalhost(args[0]))]);
                 args[0] = URL.createObjectURL(content);
