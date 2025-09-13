@@ -2260,7 +2260,7 @@
 
     const into_edit_page_event_handler = e => {
         const page = $(`#edit-page-${e.target.id}`);
-        console.log(e, page, e.target.id);
+        console.log(e, page, e.target, e.target.id);
         into_edit_page(page);
     };
 
@@ -4217,6 +4217,7 @@
     });
 
     const init_rb_button = btn => {
+        console.log(btn);
         btn.classList.add("milbtn");
         btn.addEventListener("click", into_edit_page_event_handler);
     };
