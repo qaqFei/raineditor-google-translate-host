@@ -2260,7 +2260,7 @@
 
     const into_edit_page_event_handler = e => {
         const page = $(`#edit-page-${e.target.id}`);
-        console.log(e);
+        console.log(e, page, e.target.id);
         into_edit_page(page);
     };
 
