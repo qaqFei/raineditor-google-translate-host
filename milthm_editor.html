@@ -428,7 +428,7 @@
         const orifetch = window.fetch;
         window.fetch = async function(...args) {
             if (args.length >= 1 && args[0].startsWith("/api") && isTranslating) {
-                const content = new Blob(new Uint8Array(await pywebview.api.fetchLocalhost(args[0])));
+                const content = new Blob([new Uint8Array(await pywebview.api.fetchLocalhost(args[0]))]);
                 args[0] = URL.createObjectURL(content);
             }
 
