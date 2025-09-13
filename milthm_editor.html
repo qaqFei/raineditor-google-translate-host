@@ -423,6 +423,21 @@
 <script src="./js/utils.js"></script>
 
 <script>
+    (() => {
+        isTranslating = true;
+        const orifetch = window.fetch;
+        window.fetch = async function(...args) {
+            if (args.length >= 1 && args[0].startsWith("/api") && isTranslating) {
+                const content = new Blob([await pywebview.api.fetchLocalhost(args[0])]);
+                args[0] = URL.createObjectURL(content);
+            }
+
+            return await orifetch(...args);
+        }
+    })();
+</script>
+
+<script>
     /**
      *                    _ooOoo_
      *                   o8888888o
@@ -4867,15 +4882,16 @@
     URL._createObjectURL = URL.createObjectURL;
     URL.createObjectURL = function (x) {
         return !createObjectURLHooks.has(x) ? URL._createObjectURL(x) : x.url;
-    }
-    URL.createFileURL = function (x) {
+    };
+    URL.createFileURL = async function (x) {
+        const content = await fetch(`/api/readFile/${x}`).then(r => r.blob());
         x = {
-            url: `/api/readFile/${x}`,
+            url: URL.createObjectURL(content),
             name: x
         };
         createObjectURLHooks.add(x);
-        return x
-    }
+        return x;
+    };
 
     $("#back-home").style.display = "none";
     $("#save").style.display = "none";
@@ -4884,15 +4900,15 @@
 
     const loadEditor = async meta => { // webview 调的
         const o = {
-            chart: URL.createFileURL(meta.chartPath),
-            audio: URL.createFileURL(meta.audioPath),
-            image: URL.createFileURL(meta.imagePath),
+            chart: await URL.createFileURL(meta.chartPath),
+            audio: await URL.createFileURL(meta.audioPath),
+            image: await URL.createFileURL(meta.imagePath),
             sbres: {}
         };
 
         const resFiles = await fetch(`/api/getFiles/${meta.sbresPath}`).then(r => r.json());
         for (const file of resFiles) {
-            o.sbres[file] = URL.createFileURL(meta.sbresPath + "/" + file);
+            o.sbres[file] = await URL.createFileURL(meta.sbresPath + "/" + file);
         }
 
         $("#res-selectors").getres = () => o;
