@@ -2258,9 +2258,8 @@
     };
     render.lastCall = performance.now();
 
-    const into_edit_page_event_handler = e => {
-        const page = $(`#edit-page-${e.target.id}`);
-        console.log(e, page, e.target, e.target.id);
+    const into_edit_page_event_handler = function() {
+        const page = $(`#edit-page-${this.id}`);
         into_edit_page(page);
     };
 
