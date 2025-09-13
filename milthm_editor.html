@@ -423,8 +423,10 @@
 <script src="./js/utils.js"></script>
 
 <script>
+    try { isTranslating = pywebview.api.getIsTranslating(); }
+    catch { isTranslating = false; }
+
     (() => {
-        isTranslating = true;
         const orifetch = window.fetch;
         window.fetch = async function(...args) {
             if (args.length >= 1 && args[0].startsWith("/api") && isTranslating) {
@@ -2294,7 +2296,6 @@
     const into_edit_page = (page, datas) => {
         opening_edit_page.forEach(p => p.style.display = "none");
         opening_edit_page.clear();
-        console.log(page);
         opening_edit_page.add(page);
         const name_match = name => page.id === `edit-page-${name}`;
 
@@ -4216,7 +4217,6 @@
     });
 
     const init_rb_button = btn => {
-        console.log(btn);
         btn.classList.add("milbtn");
         btn.addEventListener("click", into_edit_page_event_handler);
     };
