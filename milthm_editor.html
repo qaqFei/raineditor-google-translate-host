@@ -2295,6 +2295,7 @@
     const into_edit_page = (page, datas) => {
         opening_edit_page.forEach(p => p.style.display = "none");
         opening_edit_page.clear();
+        console.log(page);
         opening_edit_page.add(page);
         const name_match = name => page.id === `edit-page-${name}`;
 
