@@ -19,10 +19,12 @@
                         <div id="line-edit">轨道编辑</div>
                         <div id="sb-edit">故事板编辑</div>
                         <div id="script-run">运行脚本</div>
+                        <div id="premake-anim">预制动画</div>
 
                         <!-- <div id="note-edit">编辑 Note</div> -->
                         <!-- <div id="batch-note-edit">批量编辑 Note</div> -->
                         <!-- <div id="batch-event-edit">批量编辑 Event</div> -->
+                        <!-- <div id="premake-anim-apply">应用预制动画</div> -->
                     </div>
                 </div>
             </div>
@@ -144,6 +146,16 @@
                     <div id="edit-page-batch-event-edit-footer-apply" class="milbtn" onclick="applyBatchEditEvent()">应用</div>
                 </div>
             </div>
+
+            <div id="edit-page-premake-anim">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-premake-anim-main"></div>
+            </div>
+
+            <div id="edit-page-premake-anim-apply">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-premake-anim-apply-main"></div>
+            </div>
         </div>
     </div>
     
@@ -159,6 +171,12 @@
             " id="colorMatrix"></feColorMatrix>
         </filter>
     </svg>
+
+    <dialog id="mildialog-template" class="mildialog">
+        <p class="mildialog-title">Title</p>
+        <div class="mildialog-content">Content</div>
+        <button class="mildialog-ok">Confirm</button>
+    </dialog>
 </body>
 
 <style>
@@ -412,6 +430,121 @@
         z-index: 100;
         pointer-events: none;
     }
+
+    #edit-page-premake-anim-main {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2%;
+        padding: 2%;
+        box-sizing: border-box;
+        align-content: flex-start;
+    }
+
+    #edit-page-premake-anim-main > div {
+        flex: 0 0 98%;
+        height: 40%;
+    }
+
+    #edit-page-premake-anim-main > div > #premade-anim-cvcontainer {
+        width: 100%;
+        height: 80%;
+    }
+
+    #edit-page-premake-anim-main > div > #premade-anim-cvcontainer > canvas {
+        width: 100%;
+        height: 100%;
+    }
+
+    .mildialog {
+        display: flex;
+        flex-direction: column;
+        width: 58.5%;
+        height: 57.5%;
+        border: none;
+        background-color: #fefefeee;
+        border-radius: 3vh;
+        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.3));
+        overflow: hidden;
+        user-select: none;
+    }
+
+    .mildialog::backdrop {
+        background-color: rgba(0, 0, 0, 0);
+        transition: background-color 0.2s linear;
+    }
+
+    .mildialog.mildialog-showing::backdrop {
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .mildialog:focus, .mildialog:focus-visible {
+        outline: none;
+    }
+
+    .mildialog-title {
+        font-size: 4.2vh;
+        translate: 4.3% 3.3%;
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+
+    .mildialog-content {
+        font-size: 4.1vh;
+        color: rgba(0, 0, 0, 0.6);
+        width: auto;
+        flex-grow: 1;
+        overflow-y: auto;
+        margin: 2% 5.3%;
+    }
+
+    .mildialog-content::-webkit-scrollbar {
+        width: 1.8vh;
+        background: transparent;
+    }
+
+    .mildialog-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .mildialog-content::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 0.9vh;
+    }
+
+    .mildialog-content::-webkit-scrollbar-button {
+        display: none;
+    }
+
+    .mildialog-content:focus, .mildialog-content:focus-visible {
+        outline: none;
+    }
+
+    .mildialog-ok {
+        --margin: 5.3%;
+        --height: 6.9vh;
+        --fs-mult: 0.52;
+
+        margin: 0 var(--margin);
+        width: calc(100% - var(--margin) * 2);
+        font-family: milFont;
+        font-size: calc(var(--height) * var(--fs-mult));
+        padding-top: calc(var(--height) * (1.0 - var(--fs-mult)) / 2);
+        padding-bottom: calc(var(--height) * (1.0 - var(--fs-mult)) / 2);
+        margin-bottom: 3.3%;
+        border-radius: calc(var(--height) / 2);
+        border: none;
+        outline: none;
+        background: linear-gradient(90deg, rgb(224, 195, 252), rgb(152, 197, 252));
+        transition: filter 0.2s ease-in-out;
+    }
+
+    .mildialog-ok:active {
+        filter: brightness(0.9);
+    }
+
+    .mildialog-ok:focus, .mildialog-ok:focus-visible {
+        outline: none;
+    }
 </style>
 
 <script src="./js/canvas2d_ext.js"></script>
@@ -423,7 +556,6 @@
 <script src="./js/utils.js"></script>
 
 <script>
-
     (() => {
         const orifetch = window.fetch;
         window.fetch = async function(...args) {
@@ -484,6 +616,1062 @@
     var copyEditingData = null;
     var msgs = [];
     var disableDeleteWarn = false;
+
+    const pmanim_ls = ctx => (ctx.canvas.width + ctx.canvas.height) * MIL_LINE_HEAD_SIZE * 0.75 * 3.0;
+    const pmanim_lw = ctx => (ctx.canvas.width + ctx.canvas.height) * MIL_LINE_HEAD_BORDER * 0.75 * 3.0;
+    
+    const MIL_CES = {
+        EnumAnimationType: {
+            PositionX: 0,
+            PositionY: 1,
+            Transparency: 2,
+            Size: 3,
+            Rotation: 4,
+            FlowSpeed: 5,
+            RelativeX: 6,
+            RelativeY: 7,
+            LineBodyTransparency: 8,
+            LineHeadTransparency: 9,
+            StoryBoardWidth: 10,
+            StoryBoardHeight: 11,
+            Speed: 12,
+            WholeTransparency: 13,
+            StoryBoardLeftBottomX: 14,
+            StoryBoardLeftBottomY: 15,
+            StoryBoardRightBottomX: 16,
+            StoryBoardRightBottomY: 17,
+            StoryBoardLeftTopX: 18,
+            StoryBoardLeftTopY: 19,
+            StoryBoardRightTopX: 20,
+            StoryBoardRightTopY: 21,
+            Color: 22,
+            VisibleArea: 23,
+        },
+        EnumAnimationTypeName: {
+            0: "X坐标", 1: "Y坐标",
+            2: "透明度", 3: "大小",
+            4: "旋转", 5: "速度系数",
+            6: "相对X", 7: "相对Y",
+            8: "线体透明度", 9: "线头透明度",
+            10: "故事板宽度", 11: "故事板高度",
+            12: "速度", 13: "note整体透明度",
+            14: "故事板左下X", 15: "故事板左下Y",
+            16: "故事板右下X", 17: "故事板右下Y",
+            18: "故事板左上X", 19: "故事板左上Y",
+            20: "故事板右上X", 21: "故事板右上Y",
+            22: "颜色", 23: "note可见区域",
+        },
+        EnumAnimationTypeNameShort: {
+            0: "X", 1: "Y",
+            2: "A", 3: "S",
+            4: "R", 5: "FS",
+            6: "RX", 7: "RY",
+            8: "LBA", 9: "LHA",
+            10: "SBW", 11: "SBH",
+            12: "SP", 13: "NA",
+            14: "SBLBX", 15: "SBLBY",
+            16: "SBRBX", 17: "SBRBY",
+            18: "SBUTX", 19: "SBUTY",
+            20: "SBRUX", 21: "SBRUY",
+            22: "C", 23: "VA"
+        },
+        EnumAnimationBearerType: {
+            Line: 0,
+            Note: 1,
+            StoryBoard: 2,
+        },
+        EnumAnimationBearerTypeText: {
+            0: "轨", 1: "键", 2: "故"
+        },
+        EnumAnimationBearerTypeTextLong: {
+            0: "轨道", 1: "音符", 2: "故事板对象"
+        },
+        EnumStoryboardType: {
+            Picture: 0,
+            Text: 1,
+            Mash: 2,
+        },
+        EnumStoryboardTypeName: {
+            0: "图片", 1: "文字", 2: "棍母"
+        },
+        EnumLayer: {
+            Background: 0,
+            Normal: 1,
+            Foreground: 2,
+        },
+        EnumStoryboardLayerName: {
+            0: "背景",
+            1: "默认",
+            2: "前景"
+        },
+        EnumNoteType: {
+            Hit: 0,
+            Drag: 1,
+        },
+        EnumEaseTypeText: {
+            0: "缓入",
+            1: "缓出",
+            2: "缓入缓出",
+        },
+        EnumEasePressText: {
+            0: "Linear",
+            1: "Sine",
+            2: "Quad",
+            3: "Cubic",
+            4: "Quart",
+            5: "Quint",
+            6: "Expo",
+            7: "Circ",
+            8: "Back",
+            9: "Elastic",
+            10: "Bounce",
+        }
+    };
+
+    const premade_anim_draw_track = (ctx, x, y, alpha, lineAlpha, headAlpha, rotation) => {
+        const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+
+        lineAlpha *= alpha;
+        headAlpha *= alpha;
+
+        ctx.drawAlphaImage(
+            config.line_head,
+            x - pmanim_ls(ctx) / 2, y - pmanim_ls(ctx) / 2,
+            pmanim_ls(ctx), pmanim_ls(ctx),
+            headAlpha
+        );
+
+        const bodyPoint = Utils.rotate_point(x, y, rotation + 180, (w + h) * 5.0);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-ctx.canvas.width / 2, -ctx.canvas.height / 2, ctx.canvas.width, ctx.canvas.height);
+        ctx.arc(x, y, Math.max(pmanim_ls(ctx) / 2 - 1.0, 0.0), 0, 2 * Math.PI);
+        ctx.clip();
+        ctx.clip("evenodd");
+        ctx.drawLineEx(
+            x, y, ...bodyPoint,
+            pmanim_lw(ctx) * 0.75,
+            `rgba(255, 255, 255, ${Utils.fixorp(lineAlpha) * 0.8})`
+        );
+        ctx.restore();
+    };
+
+    const premade_anims = [
+        {
+            name: "1",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(w * ((1.0 - p) * -0.5), h * -0.5, w * ((1.0 - p) * -0.5), h * 0.5, pmanim_lw(ctx), "white");
+                ctx.drawLineEx(w * ((1.0 - p) * 0.5), h * -0.5, w * ((1.0 - p) * 0.5), h * 0.5, pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "左侧线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 / 2,
+                            end: 0,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 * 0.6,
+                            end: -1080 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.LineBodyTransparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "右侧线条",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1920 / 2,
+                            end: 0,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 * 0.6,
+                            end: -1080 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.LineBodyTransparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            name: "2",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(w * -0.5, h * ((1.0 - p) * -0.5), w * 0.5, h * ((1.0 - p) * -0.5), pmanim_lw(ctx), "white");
+                ctx.drawLineEx(w * -0.5, h * ((1.0 - p) * 0.5), w * 0.5, h * ((1.0 - p) * 0.5), pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "上方线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 / 2,
+                            end: 0,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 * 0.6,
+                            end: -1920 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.LineBodyTransparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 180.0,
+                            end: 180.0,
+                            type: MIL_CES.EnumAnimationType.Rotation,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "下方线条",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1080 / 2,
+                            end: 0,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 * 0.6,
+                            end: -1920 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.LineBodyTransparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 180.0,
+                            end: 180.0,
+                            type: MIL_CES.EnumAnimationType.Rotation,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            name: "3",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                const y = h * ((1.0 - p) * -0.2 - 0.25);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(w * -0.5, y, w * 0.5, y, pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "动画线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1080 * 0.45,
+                            end: 1080 * 0.25,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 * 0.6,
+                            end: -1920 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 180.0,
+                            end: 180.0,
+                            type: MIL_CES.EnumAnimationType.Rotation,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            name: "4",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                const y = h * ((1.0 - p) * 0.2 + 0.25);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(w * -0.5, y, w * 0.5, y, pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "动画线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 * 0.45,
+                            end: -1080 * 0.25,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 * 0.6,
+                            end: -1920 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 180.0,
+                            end: 180.0,
+                            type: MIL_CES.EnumAnimationType.Rotation,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            name: "5",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                const x = w * ((1.0 - p) * 0.1 + 0.35);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(x, h * -0.5, x, h * 0.5, pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "动画线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1920 * 0.45,
+                            end: 1920 * 0.25,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 * 0.6,
+                            end: -1080 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                    ]
+                }
+            ]
+        },
+        {
+            name: "6",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                p = Math.pow(1.0 - Math.pow(1.0 - p, 2), 0.5); // out circ
+                const alpha = 1.0 - Math.pow(p, 2);
+                const x = w * ((1.0 - p) * -0.1 - 0.35);
+                ctx.globalAlpha = alpha;
+                ctx.drawLineEx(x, h * -0.5, x, h * 0.5, pmanim_lw(ctx), "white");
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "动画线条",
+                    anims: [
+                        {
+                            startTime: [0, -1, 16],
+                            endTime: [0, 0, 1],
+                            start: 0.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1920 * 0.45,
+                            end: -1920 * 0.25,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 1,
+                                press: 7,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -1080 * 0.6,
+                            end: -1080 * 0.6,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 0.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 2,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                    ]
+                }
+            ]
+        },
+        {
+            name: "7",
+            preview_renderer: function(ctx, t, p) {
+                const [w, h] = [ctx.canvas.width, ctx.canvas.height];
+                const y = h * 350 / 1080;
+
+                premade_anim_draw_track(ctx, 0, y, 1.0, 1.0, 1.0, 90.0);
+                premade_anim_draw_track(ctx, w * -250 / 1920, y, 1.0, 1.0, 1.0, 90.0);
+                premade_anim_draw_track(ctx, w * -500 / 1920, y, 1.0, 1.0, 1.0, 90.0);
+                premade_anim_draw_track(ctx, w * 250 / 1920, y, 1.0, 1.0, 1.0, 90.0);
+                premade_anim_draw_track(ctx, w * 500 / 1920, y, 1.0, 1.0, 1.0, 90.0);
+            },
+            duration: 1.0,
+            data: [
+                {
+                    need_type: "line",
+                    explain: "第一条线",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 1.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -350,
+                            end: -350,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 0,
+                            end: 0,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "第二条线",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 1.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -350,
+                            end: -350,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -250,
+                            end: -250,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "第三条线",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 1.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -350,
+                            end: -350,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -500,
+                            end: -500,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "第四条线",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 1.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -350,
+                            end: -350,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 250,
+                            end: 250,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                },
+                {
+                    need_type: "line",
+                    explain: "第五条线",
+                    anims: [
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 1.0,
+                            end: 1.0,
+                            type: MIL_CES.EnumAnimationType.Transparency,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: -350,
+                            end: -350,
+                            type: MIL_CES.EnumAnimationType.PositionY,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [1, 0, 1],
+                            start: 500,
+                            end: 500,
+                            type: MIL_CES.EnumAnimationType.PositionX,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0,
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ];
 
     const spwan_delete_warn = text => `\n这个操作不可逆！\n你真的要删除吗？这个${text}会丢失很久（真的很久！）`;
 
@@ -914,41 +2102,42 @@
         // ]) await loadCss(`${monaco_editor}/${path}`);
 
         for (const i of [
-            // { name: "builtin.drag", skin: true },
-            // { name: "builtin.hold", skin: true },
-            // { name: "builtin.hold_double", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.line_head", skin: true },
-            // { name: "builtin.line_pixel", skin: true },
-            // { name: "builtin.line_vertical", skin: true },
-            // { name: "builtin.tap", skin: true },
-            // { name: "builtin.tap_double", skin: true },
-            // { name: "builtin.drag", skin: true },
-            // { name: "builtin.hold", skin: true },
-            // { name: "builtin.hold_double", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.line_head", skin: true },
-            // { name: "builtin.line_pixel", skin: true },
-            // { name: "builtin.line_vertical", skin: true },
-            // { name: "builtin.tap", skin: true },
-            // { name: "builtin.tap_double", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.line", skin: true },
-            // { name: "builtin.circle", skin: false },
-            // { name: "builtin.exhold", skin: false },
-            // { name: "builtin.exhold_double", skin: false },
-            // { name: "builtin.extap", skin: false },
-            // { name: "builtin.extap_double", skin: false },
-            // { name: "builtin.half_circle", skin: false },
-            // { name: "builtin.hold_active", skin: false },
-            // { name: "builtin.rect", skin: false },
-            // { name: "builtin.round_rect", skin: false },
-            // { name: "builtin.sector", skin: false },
-            // { name: "builtin.triangle", skin: false },
-            // { name: "builtin.triangle2", skin: false },
+            { name: "builtin.drag", skin: true },
+            { name: "builtin.hold", skin: true },
+            { name: "builtin.hold_double", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.line_head", skin: true },
+            { name: "builtin.line_pixel", skin: true },
+            { name: "builtin.line_vertical", skin: true },
+            { name: "builtin.tap", skin: true },
+            { name: "builtin.tap_double", skin: true },
+            { name: "builtin.drag", skin: true },
+            { name: "builtin.hold", skin: true },
+            { name: "builtin.hold_double", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.line_head", skin: true },
+            { name: "builtin.line_pixel", skin: true },
+            { name: "builtin.line_vertical", skin: true },
+            { name: "builtin.tap", skin: true },
+            { name: "builtin.tap_double", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.line", skin: true },
+            { name: "builtin.circle", skin: false },
+            { name: "builtin.exhold", skin: false },
+            { name: "builtin.exhold_double", skin: false },
+            { name: "builtin.extap", skin: false },
+            { name: "builtin.extap_double", skin: false },
+            { name: "builtin.half_circle", skin: false },
+            { name: "builtin.hold_active", skin: false },
+            { name: "builtin.rect", skin: false },
+            { name: "builtin.round_rect", skin: false },
+            { name: "builtin.sector", skin: false },
+            { name: "builtin.triangle", skin: false },
+            { name: "builtin.triangle2", skin: false },
         ]) {
+            if (!(new URL(window.location.href).search.includes("load_official_assets"))) continue;
             const ss = "./resources/milres/SharedStoryboardAssets";
             const fn = !i.skin ? i.name : `!skin${config.res_meta.sharedStoryboardAssetsSkin}_${i.name}`;
             const img = await loadImage(`${ss}/${fn}`);
@@ -1264,6 +2453,7 @@
     var editing_event_dx = 0;
     var editing_event_lines_get_index_from_x = x => -1;
     var edtracks = [];
+    var now_t = 0.0;
 
     const render = () => {
         const fps = 1000 / (performance.now() - render.lastCall);
@@ -1273,7 +2463,7 @@
 
         const chart = config.chart;
         const chart_render_area = config.chart_render_area;
-        const now_t = config.audio.currentTime - config.chart.meta.offset;
+        now_t = config.audio.currentTime - config.chart.meta.offset;
         const now_beat = ChartUtils.sec2beat(now_t);
 
         const set_editor_area = (name, rect, mult = true) => {
@@ -3448,6 +4638,80 @@
             updateForm();
             $("#edit-page-batch-event-edit-item-delete").addEventListener("click", onDelete);
             $("#edit-page-batch-event-edit-property-select").onchange = updateForm;
+        } else if (name_match("premake-anim-apply")) { 
+            page.querySelector("#edit-page-premake-anim-apply-main").innerHTML = `
+                <span>应用预制动画: ${datas.obj.name}</span> <br><br>
+                <span>动画依赖: </span> <br>
+                ${datas.obj.data.map(dep => `
+                    <span>类型: ${{
+                        line: "线", note: "音符", storyboard: "故事板"
+                    }[dep.need_type]}</span> <br>
+                    <span>备注: ${dep.explain}</span> <br>
+                    <span>归属编号(留空自动创建): </span> <input class="input-style1" style="display: inline-flex;" type="number" step="1" value="" id="edit-page-premake-anim-value-input">
+                `).join("<br><br>")} <br> <br>
+
+                <button class="milbtn" id="edit-page-premake-anim-apply-btn">应用</button>
+            `;
+
+            const apply = () => {
+                const values = Array.from($$("#edit-page-premake-anim-value-input")).map(x => x.value);
+                for (let i = 0; i < datas.obj.data.length; i++) {
+                    const dep = datas.obj.data[i];
+
+                    const bearer_type = {
+                        line: MIL_CES.EnumAnimationBearerType.Line,
+                        note: MIL_CES.EnumAnimationBearerType.Note,
+                        storyboard: MIL_CES.EnumAnimationBearerType.StoryBoard
+                    }[dep.need_type];
+                    let bearer = parseInt(values[i]);
+
+                    let bearer_obj = ChartUtils.objFromBearerData({
+                        bearer_type: bearer_type,
+                        bearer: bearer
+                    });
+
+                    if (bearer_obj == null) {
+                        if (dep.need_type == "line") {
+                            bearer_obj = {
+                                notes: [],
+                                animations: [],
+                                index: ChartUtils.nextLineIdx(),
+                            };
+                            config.chart.lines.push(bearer_obj);
+                        } else if (dep.need_type == "note") {
+                            // ?? note 怎么预制动画
+                        } else if (dep.need_type == "storyboard") {
+                            bearer_obj = {
+                                type: dep.storyboard_type,
+                                data: dep.storyboard_data,
+                                layer: dep.storyboard_layer,
+                                animations: [],
+                                index: ChartUtils.nextSbIdx()
+                            };
+                            config.chart.storyboards.push(bearer_obj);
+                        }
+                    }
+
+                    const currbeat = parseBeatStr(fmtBeatStr(ChartUtils.sec2beat(now_t)));
+
+                    for (const anim of dep.anims) {
+                        const newanim = anim.deepcopy();
+                        newanim.bearer_type = bearer_type;
+                        newanim.bearer = bearer_obj.index;
+                        newanim.index = ChartUtils.nextEventIdx();
+                        newanim.startTime = (newanim.startTime.value + currbeat.value).tobeat;
+                        newanim.endTime = (newanim.endTime.value + currbeat.value).tobeat;
+                        bearer_obj.animations.push(newanim);
+                    }
+
+                    bearer_obj.animations.sortbykey(x => x.startTime.value);
+                }
+
+                onchartchanged(`应用了预制动画: ${datas.obj.name}`);
+                logger.info(`应用了预制动画: ${datas.obj.name}`);
+            };
+
+            $("#edit-page-premake-anim-apply-btn").addEventListener("click", apply);
         } else {
             PuginPageCallback.forEach((v, k) => {
                 if (name_match(k)) v(page, datas);
@@ -4068,114 +5332,6 @@
             } else {
                 // ?
             }
-        }
-    };
-
-    const MIL_CES = {
-        EnumAnimationType: {
-            PositionX: 0,
-            PositionY: 1,
-            Transparency: 2,
-            Size: 3,
-            Rotation: 4,
-            FlowSpeed: 5,
-            RelativeX: 6,
-            RelativeY: 7,
-            LineBodyTransparency: 8,
-            LineHeadTransparency: 9,
-            StoryBoardWidth: 10,
-            StoryBoardHeight: 11,
-            Speed: 12,
-            WholeTransparency: 13,
-            StoryBoardLeftBottomX: 14,
-            StoryBoardLeftBottomY: 15,
-            StoryBoardRightBottomX: 16,
-            StoryBoardRightBottomY: 17,
-            StoryBoardLeftTopX: 18,
-            StoryBoardLeftTopY: 19,
-            StoryBoardRightTopX: 20,
-            StoryBoardRightTopY: 21,
-            Color: 22,
-            VisibleArea: 23,
-        },
-        EnumAnimationTypeName: {
-            0: "X坐标", 1: "Y坐标",
-            2: "透明度", 3: "大小",
-            4: "旋转", 5: "速度系数",
-            6: "相对X", 7: "相对Y",
-            8: "线体透明度", 9: "线头透明度",
-            10: "故事板宽度", 11: "故事板高度",
-            12: "速度", 13: "note整体透明度",
-            14: "故事板左下X", 15: "故事板左下Y",
-            16: "故事板右下X", 17: "故事板右下Y",
-            18: "故事板左上X", 19: "故事板左上Y",
-            20: "故事板右上X", 21: "故事板右上Y",
-            22: "颜色", 23: "note可见区域",
-        },
-        EnumAnimationTypeNameShort: {
-            0: "X", 1: "Y",
-            2: "A", 3: "S",
-            4: "R", 5: "FS",
-            6: "RX", 7: "RY",
-            8: "LBA", 9: "LHA",
-            10: "SBW", 11: "SBH",
-            12: "SP", 13: "NA",
-            14: "SBLBX", 15: "SBLBY",
-            16: "SBRBX", 17: "SBRBY",
-            18: "SBUTX", 19: "SBUTY",
-            20: "SBRUX", 21: "SBRUY",
-            22: "C", 23: "VA"
-        },
-        EnumAnimationBearerType: {
-            Line: 0,
-            Note: 1,
-            StoryBoard: 2,
-        },
-        EnumAnimationBearerTypeText: {
-            0: "轨", 1: "键", 2: "故"
-        },
-        EnumAnimationBearerTypeTextLong: {
-            0: "轨道", 1: "音符", 2: "故事板对象"
-        },
-        EnumStoryboardType: {
-            Picture: 0,
-            Text: 1,
-            Mash: 2,
-        },
-        EnumStoryboardTypeName: {
-            0: "图片", 1: "文字", 2: "棍母"
-        },
-        EnumLayer: {
-            Background: 0,
-            Normal: 1,
-            Foreground: 2,
-        },
-        EnumStoryboardLayerName: {
-            0: "背景",
-            1: "默认",
-            2: "前景"
-        },
-        EnumNoteType: {
-            Hit: 0,
-            Drag: 1,
-        },
-        EnumEaseTypeText: {
-            0: "缓入",
-            1: "缓出",
-            2: "缓入缓出",
-        },
-        EnumEasePressText: {
-            0: "Linear",
-            1: "Sine",
-            2: "Quad",
-            3: "Cubic",
-            4: "Quart",
-            5: "Quint",
-            6: "Expo",
-            7: "Circ",
-            8: "Back",
-            9: "Elastic",
-            10: "Bounce",
         }
     };
 
@@ -4962,4 +6118,109 @@
     window.addEventListener("wheel", e =>  {
         if (e.ctrlKey) e.preventDefault();
     });
+
+    for (const pmanim of premade_anims) {
+        const container = document.createElement("div");
+        const cvcontainer = document.createElement("div");
+        cvcontainer.id = "premade-anim-cvcontainer";
+        container.appendChild(cvcontainer);
+
+        const previewcv = document.createElement("canvas");
+        const cvresize = () => {
+            previewcv.width = cvcontainer.clientWidth;
+            previewcv.height = cvcontainer.clientHeight;
+        };
+        previewcv.style.background = "black";
+        cvcontainer.appendChild(previewcv);
+        
+        const label = document.createElement("label");
+        label.style.display = "inline-block";
+        label.style.width = "auto";
+        // label.style.textAlign = "center";
+        label.innerText = pmanim.name;
+        container.appendChild(label);
+
+        const apply_btn = document.createElement("button");
+        apply_btn.classList.add("milbtn");
+        apply_btn.innerText = "应用";
+        apply_btn.style.display = "inline-block";
+        apply_btn.onclick = () => {
+            into_edit_page($("#edit-page-premake-anim-apply"), {
+                obj: pmanim,
+            });
+        };
+        container.appendChild(apply_btn);
+
+        const preview_update = () => {
+            requestAnimationFrame(preview_update);
+            
+            let secdur;
+            try {
+                secdur = ChartUtils.beat2sec(ChartUtils.sec2beat(now_t) + pmanim.duration) - now_t;
+            } catch (e) { return; }
+            
+            const ctx = previewcv.getContext("2d");
+            ctx.clear();
+            ctx.save();
+            ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+            const padtime = 0.3;
+            const t = (performance.now() / 1000) % (secdur + padtime);
+            if (t < secdur) {
+                pmanim.preview_renderer(ctx, t, t / secdur);
+            } else {
+                pmanim.preview_renderer(ctx, secdur, 1.0);
+            }
+            ctx.restore();
+        };
+
+        preview_update();
+        $("#edit-page-premake-anim-main").appendChild(container);
+    }
+
+    loadFont("milFont", "./resources/milres/milfont.ttf");
+    loadFont("milFontBold", "./resources/milres/milfont_bold.ttf");
+
+    HTMLElement.prototype.force_flow = function() {
+        this.clientHeight;
+    }
+
+    const showDialog = (title, content, confirm_text, onclosed) => {
+        const animdur = 0.4;
+        const animmovemult = 1.2;
+        const dlg = $("#mildialog-template").cloneNode(true);
+        dlg.id = "";
+        document.body.appendChild(dlg);
+        dlg.showModal();
+        dlg.classList.add("mildialog-showing");
+
+        dlg.querySelector(".mildialog-title").innerText = title;
+        dlg.querySelector(".mildialog-content").innerText = content;
+        dlg.querySelector(".mildialog-ok").innerText = confirm_text;
+
+        dlg.style.translate = `0 ${(window.innerHeight - dlg.offsetTop) * animmovemult}px`;
+        dlg.style.opacity = 0;
+        dlg.force_flow();
+        dlg.style.transition = `all ${animdur}s cubic-bezier(0, 0, 0, 1.5)`;
+
+        requestAnimationFrame(() => {
+            dlg.style.translate = "0 0";
+            dlg.style.opacity = 1;
+        });
+
+        dlg.querySelector(".mildialog-ok").addEventListener("click", () => {
+            dlg.style.transition = `all ${animdur}s cubic-bezier(1, -0.5, 1, 1)`;
+            dlg.style.translate = `0 ${(window.innerHeight - dlg.offsetTop) * animmovemult}px`;
+            dlg.style.opacity = 0;
+            dlg.classList.remove("mildialog-showing");
+            setTimeout(() => {
+                dlg.close();
+                dlg.remove();
+                if (onclosed) onclosed();
+            }, animdur * 1000);
+        });
+    };
+
+    if (window.isTranslating) {
+        showDialog("提示", "你正在使用翻译版本, 加载可能更慢, 请耐心等待", "确定");
+    }
 </script>
