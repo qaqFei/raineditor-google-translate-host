@@ -6220,7 +6220,13 @@
         });
     };
 
-    if (window.isTranslating) {
-        showDialog("提示", "你正在使用翻译版本, 加载可能更慢, 请耐心等待", "确定");
-    }
+    (async () => {
+        let isTranslating = false;
+        try { isTranslating = await pywebview.api.getIsTranslating(); }
+        catch { }
+
+        if (isTranslating) {
+            showDialog("提示", "你正在使用翻译版本, 加载可能更慢, 请耐心等待", "确定");
+        }
+    })();
 </script>
