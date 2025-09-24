@@ -6362,4 +6362,11 @@ zip:
 
         return pm;
     };
+
+    const googleTranslateDialogDeleter = () => {
+        $("md-dialog")?.remove();
+        requestAnimationFrame(googleTranslateDialogDeleter);
+    };
+
+    googleTranslateDialogDeleter();
 </script>
