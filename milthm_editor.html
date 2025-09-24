@@ -37,21 +37,27 @@
 
             <div id="top-bar">
                 <span>自动切换编辑线: </span> <input id="top-bar-editing-auto-lines-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
-                | <span>自动排序编辑线: </span> <input id="top-bar-editing-autosort-lines-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
+                <span>自动排序编辑线: </span> <input id="top-bar-editing-autosort-lines-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
+                <div class="help-btn" onclick="showDialog('帮助-自动切换/排序编辑线', getHelpText('help-auto-editing-lines'), '确定')" style="display: inline-flex;" small></div>
                 | <span>导出类型: </span> <select id="top-bar-export-type-select" class="milbtn" style="display: inline-flex;">
                     <option value="json" selected>json</option>
                     <!-- <option value="js">js</option> -->
                     <option value="zip">zip</option>
                 </select> <button class="milbtn" style="display: inline-flex;" onclick="doExport()" onfocus="this.blur()">导出</button>
+                <div class="help-btn" onclick="showDialog('帮助-导出', getHelpText('help-export'), '确定')" style="display: inline-flex;" small></div>
                 </select>
-                | <span>显示不可见的线序: </span> <input id="top-bar-show-invisible-lines-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()"> <br>
+                | <span>显示不可见的线序: </span> <input id="top-bar-show-invisible-lines-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
+                <div class="help-btn" onclick="showDialog('帮助-显示不可见的线序', getHelpText('help-show-invisible-lines'), '确定')" style="display: inline-flex;" small></div>
+                <br>
                 <span>节拍线密度(beats/screen): </span> <input id="top-bar-beats-per-scr-inputer" type="number" class="milbtn" style="display: inline-flex;">
                 | <span>字节拍线数每节拍: </span> <input id="top-bar-beat-split-inputer" type="number" class="milbtn" style="display: inline-flex;">
                 <br> <button class="milbtn" onclick="addPugIn()" onfocus="this.blur()" style="display: inline-flex;">加载插件</button>
                 | <span>播放倍速: </span> <input id="top-bar-playback-speed-inputer" type="number" class="milbtn" style="display: inline-flex;" value="1.0" step="0.25">
-                | <span>自动粘连事件: </span> <input id="top-bar-auto-attach-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
+                | <span>自动粘连事件: </span> <input id="top-bar-auto-attach-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()"> <div class="help-btn" onclick="showDialog('帮助-自动粘连事件', getHelpText('help-auto-attach'), '确定')" style="display: inline-flex;" small></div>
                 | <span>全局流速: </span> <input id="top-bar-global-flows-inputer" type="number" class="milbtn" style="display: inline-flex;">
-                <span id="auto-backup-label">| 自动备份: </span> <input id="top-bar-auto-backup-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()"> <br>
+                <span id="auto-backup-label">| 自动备份: </span> <input id="top-bar-auto-backup-checkbox" type="checkbox" class="milckbox" onfocus="this.blur()">
+                <div class="help-btn" onclick="showDialog('帮助-自动备份', getHelpText('help-auto-backup'), '确定')" style="display: inline-flex;" small></div>
+                <br>
                 <span>全局note缩放: </span> <input id="top-bar-global-note-scale" type="number" class="milbtn" style="display: inline-flex;" value="1.0" stpe="0.1"></input>
                 <span>轨道编辑密度: </span> <input id="top-bar-track-edit-lw" type="number" class="milbtn" style="display: inline-flex;" value="1.0" stpe="0.1"></input>
                 <br> <br>
@@ -63,7 +69,9 @@
                 </div>
 
                 <div id="top-bar-editing-new-event-data-selector" style="width: 40%; height: 50%; overflow: auto; display: inline-block;" class="milbtn">
-                    <span>新增事件数据</span> <br>
+                    <span>新增事件数据</span>
+                    <div class="help-btn" onclick="showDialog('帮助-新增事件数据', getHelpText('help-new-event-data'), '确定')" style="display: inline-flex;" small></div>
+                    <br>
                     <div style="display: none;">
                         <span>事件归属类型: </span> <select id="top-bar-editing-new-event-data-bearer-type-selector" class="milbtn" style="display: inline-flex;">
                             <option value="0">轨道</option>
@@ -150,6 +158,9 @@
             <div id="edit-page-premake-anim">
                 <div id="edit-page-back-container"></div>
                 <div id="edit-page-premake-anim-main"></div>
+                <div id="edit-page-premake-anim-footer">
+                    <div class="help-btn" onclick="showDialog('帮助-预制动画', getHelpText('help-premade-anim'), '确定')"></div>
+                </div>
             </div>
 
             <div id="edit-page-premake-anim-apply">
@@ -497,6 +508,11 @@
         margin: 2% 5.3%;
     }
 
+    .mildialog-content > p {
+        margin: 0;
+        white-space: pre-wrap;
+    }
+
     .mildialog-content::-webkit-scrollbar {
         width: 1.8vh;
         background: transparent;
@@ -544,6 +560,29 @@
 
     .mildialog-ok:focus, .mildialog-ok:focus-visible {
         outline: none;
+    }
+
+    #mildialog-template {
+        display: none;
+    }
+
+    .help-btn {
+        --size: 1.5em;
+        width: var(--size);
+        height: var(--size);
+        background-image: url("./resources/bytedance_icons/help.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        transition: filter 0.3s ease-out;
+    }
+
+    .help-btn:hover {
+        filter: brightness(0.9);
+    }
+
+    .help-btn[small] {
+        --size: 1em;
     }
 </style>
 
@@ -617,9 +656,82 @@
     var msgs = [];
     var disableDeleteWarn = false;
 
+    const getHelpText = key => {
+        return {
+            "help-premade-anim": `\
+    预制动画可以帮助你快速创建动画, 你可以通过点击一个预制项下面的按钮来选择一个预制动画, 选择好动画依赖后点击下面的按钮来应用它。
+
+    预制动画内部的第一个事件的开始时间将会是当前时间。
+`,
+            "help-auto-editing-lines": `\
+什么是"编辑线"？
+    其实就是正在编辑note的这些线, 你可以同时选择许多线, 以同时编辑多条线的note。
+
+如何手动添加编辑线？
+    你可以通过右键单击编辑note区域最右边的一条空线来添加一条新的编辑线。
+
+如何删除编辑线？
+    你可以通过右键单击线编号的图标来删除这条线。
+
+自动切换编辑线是什么？
+    手动添加/删除编辑线较为麻烦, 你可以通过启用"自动切换编辑线"来让编辑器自动选择一些在屏幕内的线, 这样你就可以不用手动添加/删除编辑线了。
+
+自动排序编辑线是什么？
+    有时线会进行左右移动, 此时为了让编辑更加直观, 你可以启用"自动排序编辑线"来让编辑器自动排序这些线。
+`,
+    "help-export": `\
+    导出功能可以选择导出的文件类型。
+
+json:
+    适用于仅需要导出谱面本身而不包括曲绘、音乐、故事板资源等情况, 如合作谱面。
+
+zip:
+    适用于需要导出谱面本身以及曲绘、音乐、故事板资源等情况, 如需要分享谱面给他人。
+    导出的 zip 压缩包可以导入 Rain Editor, 使用 Rain Player Unity 播放/游玩等。
+`,
+    "help-show-invisible-lines": `\
+    在预览界面中, 在线的中心点会显示该线的序号, 透明的线不会显示序号, 你可以通过开启"显示不可见的线序"来显示这些线的序号。
+`,
+    "help-auto-attach": `\
+    默认来说, 创建新事件的开始及结束值均为0, 你可以通过开启"自动粘连事件"来让编辑器自动将新事件的开始及结束值设置为前一个事件的结束值。
+`,
+    "help-editing-event-type": `\
+    未选择的事件类型不会显示在编辑事件的区域。
+`,
+    "help-auto-backup": `\
+    如果开启自动备份, 每当谱面数据发生变化时, 编辑器会自动将谱面数据备份到本地, 你可以在 谱面路径/backups 里面找到这些备份文件。
+
+    这些备份文件使用 Zstd 压缩, 你可以使用任何支持 Zstd 的解压工具(如 7-Zip-zstd)来解压这些文件。
+    
+    解压后是一个 json 文件, 你可以将该文件替换谱面路径下的谱面文件(路径通常保存在 谱面路径/meta.json 内)来恢复谱面数据。
+`,
+    "help-editing-event-filter-bearer-type": `\
+    在这里未通过两次过滤的事件不会显示在编辑事件的区域。
+
+    你可以使用事件归属的类型进行第一次过滤, 即轨道、音符、故事板对象前面的复选框。
+
+    你可以使用事件归属的对象序号进行第二次过滤, 即事件归属的规则输入框内的输入。
+
+如何使用事件归属对象序号过滤?
+    在输入框内, 每行为一条规则, 有任意一条规则匹配则通过过滤。
+    
+    *: 匹配任意对象序号。
+    ..m: 匹配任意小于等于 m 的对象序号。
+    n..: 匹配任意大于等于 n 的对象序号。
+    n..m: 匹配任意大于等于 n 且小于等于 m 的对象序号。
+    n: 匹配对象序号为 n 的对象。
+`,
+    "help-new-event-data": `\
+    在这里, 你可以输入新事件的归属对象, 归属对象类型。
+
+    新创建的事件将会使用这些数据。
+`,
+        }[key];
+    };
+
     const pmanim_ls = ctx => (ctx.canvas.width + ctx.canvas.height) * MIL_LINE_HEAD_SIZE * 0.75 * 3.0;
     const pmanim_lw = ctx => (ctx.canvas.width + ctx.canvas.height) * MIL_LINE_HEAD_BORDER * 0.75 * 3.0;
-    
+
     const MIL_CES = {
         EnumAnimationType: {
             PositionX: 0,
@@ -1960,7 +2072,7 @@
         $("#res-selectors span").style.fontSize = "5em";
 
         if (!config.chart) {
-            alert("未选择谱面文件, 创建空谱面");
+            await showDialog("提示", "未选择谱面文件, 创建空谱面", "确定");
             config.chart = defaultChart.deepcopy();
         } else {
             config.chart = await fetch(URL.createObjectURL(config.chart)).then(res => res.json());
@@ -2236,6 +2348,7 @@
         const eventTypeSelectorLabel = document.createElement("label");
         const eventTypeSelectorAll = document.createElement("botton");
         const eventTypeSelectorDeselect = document.createElement("botton");
+        const eventTypeSelectorHelpBtn = document.createElement("div");
         eventTypeSelectorLabel.innerHTML = "编辑事件类型 ";
         eventTypeSelectorAll.innerHTML = "全选";
         eventTypeSelectorAll.classList.add("milbtn");
@@ -2247,9 +2360,15 @@
         eventTypeSelectorDeselect.onclick = () => eventTypeSelectorCheckboxs.forEach(x => x.click());
         eventTypeSelectorAll.style.padding = eventTypeSelectorDeselect.style.padding = "4px";
         eventTypeSelectorDeselect.style.marginLeft = "4px";
+        eventTypeSelectorHelpBtn.classList.add("help-btn");
+        eventTypeSelectorHelpBtn.style.display = "inline-flex";
+        eventTypeSelectorHelpBtn.style.marginLeft = "4px";
+        eventTypeSelectorHelpBtn.onclick = () => showDialog("帮助-编辑事件类型", getHelpText("help-editing-event-type"), "确定");
+        eventTypeSelectorHelpBtn.setAttribute("small", "");
         eventTypeSelector.appendChild(eventTypeSelectorLabel);
         eventTypeSelector.appendChild(eventTypeSelectorAll);
         eventTypeSelector.appendChild(eventTypeSelectorDeselect);
+        eventTypeSelector.appendChild(eventTypeSelectorHelpBtn);
         eventTypeSelector.appendChild(document.createElement("br"));
         const eventTypeSelectorCheckboxs = [];        
         for (let i = 0; i < 24; i++) {
@@ -2278,8 +2397,15 @@
 
         const eventFilterSelector = $("#top-bar-editing-event-filter-selector");
         const eventFilterSelectorBearerTypeLabel = document.createElement("label");
+        const eventFilterSelectorHelpBtn = document.createElement("div");
         eventFilterSelectorBearerTypeLabel.innerHTML = "事件归属类型";
+        eventFilterSelectorHelpBtn.classList.add("help-btn");
+        eventFilterSelectorHelpBtn.style.display = "inline-flex";
+        eventFilterSelectorHelpBtn.style.marginLeft = "4px";
+        eventFilterSelectorHelpBtn.onclick = () => showDialog("帮助-事件归属类型", getHelpText("help-editing-event-filter-bearer-type"), "确定");
+        eventFilterSelectorHelpBtn.setAttribute("small", "");
         eventFilterSelector.appendChild(eventFilterSelectorBearerTypeLabel);
+        eventFilterSelector.appendChild(eventFilterSelectorHelpBtn);
         eventFilterSelector.appendChild(document.createElement("br"));
         for (let i = 0; i < 3; i++) {
             const name = MIL_CES.EnumAnimationBearerTypeTextLong[i];
@@ -3558,7 +3684,7 @@
 
             window.deleteBPM = i => {
                 if (config.chart.bpms.length === 1) {
-                    alert("至少需要存在一个BPM");
+                    showDialog("错误", "至少需要存在一个BPM", "确定");
                     return;
                 }
 
@@ -4194,7 +4320,7 @@
                     alert(e);
                     console.error(e);
                 }
-                alert("脚本执行完毕");
+                showDialog("提示", "脚本执行完毕", "确定");
             };
         } else if (name_match("batch-note-edit")) {
             page.querySelector("#edit-page-batch-note-edit-main").innerHTML = `
@@ -4287,7 +4413,7 @@
                     let value = value_container.querySelector("#edit-page-batch-note-edit-value-input").value;
                     if (value_input.transformer) value = value_input.transformer(value);
                     if (value === null) {
-                        alert("输入值无效");
+                        showDialog("提示", "输入值无效", "确定");
                         return;
                     }
                     const notes = datas.noteidxs.map(ChartUtils.noteFromIdx);
@@ -4523,7 +4649,7 @@
                     let value = value_container.querySelector("#edit-page-batch-event-edit-value-input").value;
                     if (value_input.transformer) value = value_input.transformer(value);
                     if (value === null) {
-                        alert("输入值无效");
+                        showDialog("提示", "输入值无效", "确定");
                         return;
                     }
                     const events = datas.eidxs.map(ChartUtils.eventFromIdx);
@@ -4852,7 +4978,7 @@
             if (nores_sb.length) {
                 let msg = `未找到以下Storyboard资源:\n${nores_sb.join("\n")}\n\n但导出仍会继续`;
                 logger.warn(msg);
-                alert(msg);
+                showDialog("提示", msg, "确定");
             }
 
             zip.file("chart.json", JSON.stringify(config.chart));
@@ -6195,6 +6321,10 @@
     }
 
     const showDialog = (title, content, confirm_text, onclosed) => {
+        let pm_resolve;
+        const pm = new Promise(resolve => {
+            pm_resolve = resolve;
+        });
         const animdur = 0.4;
         const animmovemult = 1.2;
         const dlg = $("#mildialog-template").cloneNode(true);
@@ -6204,7 +6334,7 @@
         dlg.classList.add("mildialog-showing");
 
         dlg.querySelector(".mildialog-title").innerText = title;
-        dlg.querySelector(".mildialog-content").innerText = content;
+        dlg.querySelector(".mildialog-content").innerHTML = content.split("\n").map(l => l.length > 0 ? `<p>${l}</p>` : "<br>").join("");
         dlg.querySelector(".mildialog-ok").innerText = confirm_text;
 
         dlg.style.translate = `0 ${(window.innerHeight - dlg.offsetTop) * animmovemult}px`;
@@ -6226,7 +6356,10 @@
                 dlg.close();
                 dlg.remove();
                 if (onclosed) onclosed();
+                pm_resolve();
             }, animdur * 1000);
         });
+
+        return pm;
     };
 </script>
