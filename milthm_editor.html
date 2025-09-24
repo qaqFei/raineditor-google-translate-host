@@ -20,6 +20,7 @@
                         <div id="sb-edit">故事板编辑</div>
                         <div id="script-run">运行脚本</div>
                         <div id="premake-anim">预制动画</div>
+                        <div id="picksound-tool">采音工具</div>
 
                         <!-- <div id="note-edit">编辑 Note</div> -->
                         <!-- <div id="batch-note-edit">批量编辑 Note</div> -->
@@ -166,6 +167,11 @@
             <div id="edit-page-premake-anim-apply">
                 <div id="edit-page-back-container"></div>
                 <div id="edit-page-premake-anim-apply-main"></div>
+            </div>
+
+            <div id="edit-page-picksound-tool">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-picksound-tool-main"></div>
             </div>
         </div>
     </div>
@@ -593,6 +599,7 @@
 <script src="./js/jszip/jszip.min.js"></script>
 <script src="./js/mildefault_chart.js"></script>
 <script src="./js/utils.js"></script>
+<script src="./js/binary_stream.js"></script>
 
 <script>
     (() => {
@@ -644,6 +651,7 @@
     const epr = $("#editor-on-preview-renderer").getContext("2d");
     const mctx = $("#msg-renderer").getContext("2d");
     const colorMatrix = $("#colorMatrix");
+    const currentPicksoundFileVersion = 1;
     var previewing = false;
     var preview_back = false;
     var preview_backtime = 0.0;
@@ -725,6 +733,18 @@ zip:
     在这里, 你可以输入新事件的归属对象, 归属对象类型。
 
     新创建的事件将会使用这些数据。
+`,
+    "help-picksound-export": `\
+    你可以将谱面中的音符的时间点导出, 会导出为 .milpicksound 文件, 你可以将其重新导入到 Rain Editor 。
+
+    该文件只会存储音符的时间点的秒数, 会进行去重, 应用偏移, 不包含其他属性。
+
+    当前编辑器支持版本: ${currentPicksoundFileVersion}
+`,
+    "help-picksound-import": `\
+    你可以使用"从采音文件导入到谱面"将 .milpicksound 文件导入到谱面中。
+
+    导入的每个时间点会生成一个音符, 放置到0号线。
 `,
         }[key];
     };
@@ -4838,6 +4858,126 @@ zip:
             };
 
             $("#edit-page-premake-anim-apply-btn").addEventListener("click", apply);
+        } else if (name_match("picksound-tool")) {
+            page.querySelector("#edit-page-picksound-tool-main").innerHTML = `
+                <span>从谱面导出采音文件</span>
+                <div class="help-btn" onclick="showDialog('帮助-从谱面导出采音文件', getHelpText('help-picksound-export'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                包含假音符: <input type="checkbox" id="edit-page-picksound-tool-export-include-fake"> <br>
+                包含drag: <input type="checkbox" id="edit-page-picksound-tool-export-include-drag" checked> <br>
+                <button class="milbtn" onclick="exportPicksoundFromChart()" style="margin-top: 4px;">导出</button>
+                <br><br>
+
+                <span>从采音文件导入到谱面</span>
+                <div class="help-btn" onclick="showDialog('帮助-从谱面导入采音文件', getHelpText('help-picksound-import'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-file" accept=".milpicksound" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                导入假音符: <input type="checkbox" id="edit-page-picksound-tool-import-include-fake" checked> <br>
+                导入drag: <input type="checkbox" id="edit-page-picksound-tool-import-include-drag" checked> <br>
+                <button class="milbtn" onclick="importPicksoundToChart()" style="margin-top: 4px;">导入</button>
+            `;
+
+            window.exportPicksoundFromChart = () => {
+                const pickSoundData = new Set();
+                const includeFake = $("#edit-page-picksound-tool-export-include-fake").checked;
+                const includeDrag = $("#edit-page-picksound-tool-export-include-drag").checked;
+
+                for (const line of config.chart.lines) {
+                    for (const note of line.notes) {
+                        if (note.isFake && !includeFake) continue;
+                        if (note.type == MIL_CES.EnumNoteType.Drag && !includeDrag) continue;
+                        pickSoundData.add(note.time.sec + config.chart.meta.offset);
+                    }
+                }
+
+                const pickSoundDataArr = Array.from(pickSoundData).sort((a, b) => a - b);
+                const stream = new BinaryOutStream();
+
+                // header
+                stream.writeStringNoLength("MILPICKSOUND");
+                stream.writeUInt32(currentPicksoundFileVersion);
+                stream.writeUInt64(pickSoundDataArr.length);
+                stream.writeUInt32(0); // reserved
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+
+                // data
+                for (const t of pickSoundDataArr) {
+                    stream.writeDouble(t);
+                }
+
+                const a = document.createElement("a");
+                a.href = stream.tempUrl;
+                a.download = `${config.chart.meta.name}.milpicksound`;
+                a.click();
+            };
+            
+            window.importPicksoundToChart = () => {
+                const file = $("#edit-page-picksound-tool-import-file").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                if (!config.chart.lines.length) {
+                    showDialog("错误", "当前谱面无可用线", "确定");
+                    return;
+                }
+
+                const includeFake = $("#edit-page-picksound-tool-import-include-fake").checked;
+                const includeDrag = $("#edit-page-picksound-tool-import-include-drag").checked;
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    const stream = new BinaryInStream(e.target.result);
+
+                    if (!stream.checkNextIs("MILPICKSOUND")) {
+                        await showDialog("错误", "无效的采音文件", "确定");
+                        return;
+                    }
+
+                    const version = stream.readUInt32();
+                    if (version !== currentPicksoundFileVersion) {
+                        await showDialog("错误", `不支持的采音文件版本(${version})\n当前编辑器支持的版本为: ${currentPicksoundFileVersion}`, "确定");
+                        return;
+                    }
+
+                    const count = stream.readUInt64();
+
+                    // reserved
+                    for (let i = 0; i < 8; i++) {
+                        stream.readUInt32();
+                    }
+
+                    for (let i = 0; i < count; i++) {
+                        const time = stream.readDouble();
+                        const beat = ChartUtils.sec2beat(time).tobeat;
+                        const note = {
+                            time: beat,
+                            endTime: beat,
+                            isFake: false,
+                            type: MIL_CES.EnumNoteType.Hit,
+                            isAlwaysPerfect: false,
+                            index: ChartUtils.nextNoteIdx()
+                        };
+
+                        config.chart.lines[0].notes.push(note);
+                    }
+
+                    config.chart.lines[0].notes.sort((a, b) => a.time.value - b.time.value);
+                    const msg = `导入了来自采音文件的 ${count} 个 note`;
+                    logger.info(msg);
+                    onchartchanged(msg);
+                    await showDialog("消息", msg, "确定");
+                };
+                
+                freader.readAsArrayBuffer(file);
+            };
         } else {
             PuginPageCallback.forEach((v, k) => {
                 if (name_match(k)) v(page, datas);
@@ -6362,4 +6502,11 @@ zip:
 
         return pm;
     };
+
+    const googleTranslateDialogDeleter = () => {
+        $("md-dialog")?.remove();
+        requestAnimationFrame(googleTranslateDialogDeleter);
+    };
+
+    googleTranslateDialogDeleter();
 </script>
