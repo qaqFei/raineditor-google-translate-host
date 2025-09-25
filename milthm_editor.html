@@ -746,6 +746,14 @@ zip:
 
     导入的每个时间点会生成一个音符, 放置到0号线。
 `,
+    "help-picksound-export-phigros-official": `\
+    你可以使用 Phigros 官方格式谱面文件生成 .milpicksound 采音文件。
+`,
+    "help-picksound-export-phigros-rpe": `\
+    你可以使用 Re:PhiEdit 或其他使用 RPE 格式生成的 Phigros 自制谱面文件。
+
+    仅支持 json 格式, 请不要导入 zip, pez, pec 。
+`,
         }[key];
     };
 
@@ -4875,7 +4883,49 @@ zip:
                 导入假音符: <input type="checkbox" id="edit-page-picksound-tool-import-include-fake" checked> <br>
                 导入drag: <input type="checkbox" id="edit-page-picksound-tool-import-include-drag" checked> <br>
                 <button class="milbtn" onclick="importPicksoundToChart()" style="margin-top: 4px;">导入</button>
+                <br><br>
+
+                <span>从 Phigros 官谱生成采音文件</span>
+                <div class="help-btn" onclick="showDialog('帮助-从 Phigros 官谱生成采音文件', getHelpText('help-picksound-export-phigros-official'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-phigros-official-file" accept=".json" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-official-include-drag" checked> <br>
+                <button class="milbtn" onclick="importPicksoundFromPhigrosOfficial()" style="margin-top: 4px;">生成</button>
+                <br><br>
+
+                <span>从 Phigros 自制谱生成采音文件</span>
+                <div class="help-btn" onclick="showDialog('帮助-从 Phigros 自制谱生成采音文件', getHelpText('help-picksound-export-phigros-rpe'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-phigros-rpe-file" accept=".json" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                包含假音符: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-fake" checked> <br>
+                包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-drag" checked> <br>
+                <button class="milbtn" onclick="importPicksoundFromPhigrosRPE()" style="margin-top: 4px;">生成</button>
+                <br><br>
             `;
+
+            const _makeBinaryStreamFromPicksoundData = dataArr => {
+                const stream = new BinaryOutStream();
+
+                // header
+                stream.writeStringNoLength("MILPICKSOUND");
+                stream.writeUInt32(currentPicksoundFileVersion);
+                stream.writeUInt64(dataArr.length);
+                stream.writeUInt32(0); // reserved
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+
+                // data
+                for (const t of dataArr) {
+                    stream.writeDouble(t);
+                }
+
+                return stream;
+            };
 
             window.exportPicksoundFromChart = () => {
                 const pickSoundData = new Set();
@@ -4891,25 +4941,7 @@ zip:
                 }
 
                 const pickSoundDataArr = Array.from(pickSoundData).sort((a, b) => a - b);
-                const stream = new BinaryOutStream();
-
-                // header
-                stream.writeStringNoLength("MILPICKSOUND");
-                stream.writeUInt32(currentPicksoundFileVersion);
-                stream.writeUInt64(pickSoundDataArr.length);
-                stream.writeUInt32(0); // reserved
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-
-                // data
-                for (const t of pickSoundDataArr) {
-                    stream.writeDouble(t);
-                }
+                const stream = _makeBinaryStreamFromPicksoundData(pickSoundDataArr);
 
                 const a = document.createElement("a");
                 a.href = stream.tempUrl;
@@ -4977,6 +5009,119 @@ zip:
                 };
                 
                 freader.readAsArrayBuffer(file);
+            };
+        
+            window.importPicksoundFromPhigrosOfficial = () => {
+                const file = $("#edit-page-picksound-tool-import-phigros-official-file").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                const includeDrag = $("#edit-page-picksound-tool-import-phigros-official-include-drag").checked;
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    try {
+                        const parsedJson = JSON.parse(e.target.result);
+                        const data = new Set();
+
+                        for (const line of parsedJson.judgeLineList) {
+                            const notes = line.notesAbove.concat(line.notesBelow);
+                            const secPerBeat = 60 / line.bpm / 32;
+                            for (const note of notes) {
+                                if (note.type === 2 && !includeDrag) continue;
+                                data.add(note.time * secPerBeat - parsedJson.offset);
+                            }
+                        }
+
+                        const dataArr = Array.from(data).sort((a, b) => a - b);
+                        const stream = _makeBinaryStreamFromPicksoundData(dataArr);
+
+                        const a = document.createElement("a");
+                        a.href = stream.tempUrl;
+                        a.download = `${file.name}.milpicksound`;
+                        a.click();
+                    } catch (e) {
+                        await showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                        return;
+                    }
+                };
+
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
+            };
+
+            window.importPicksoundFromPhigrosRPE = () => {
+                const file = $("#edit-page-picksound-tool-import-phigros-rpe-file").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                const includeFake = $("#edit-page-picksound-tool-import-phigros-rpe-include-fake").checked;
+                const includeDrag = $("#edit-page-picksound-tool-import-phigros-rpe-include-drag").checked;
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    try {
+                        const parsedJson = JSON.parse(e.target.result);
+                        const bpms = parsedJson.BPMList;
+                        const data = new Set();
+
+                        const beatToSec = rpeBeat => {
+                            let beatVal = rpeBeat.value;
+                            let sec = 0;
+
+                            if (bpms.length === 1) {
+                                sec = beatVal * 60 / bpms[0].bpm;
+                            } else {
+                                for (let i = 0; i < bpms.length; i++) {
+                                    const e = bpms[i];
+                                    if (i != bpms.length - 1) {
+                                        const et_beat = bpms[i + 1].startTime.value - e.startTime.value;
+
+                                        if (beatVal >= et_beat) {
+                                            sec += et_beat * 60 / e.bpm;
+                                            beatVal -= et_beat;
+                                        } else {
+                                            sec += beatVal * 60 / e.bpm;
+                                            break;
+                                        }
+                                    } else {
+                                        sec += beatVal * 60 / e.bpm;
+                                    }
+                                }
+                            }
+
+                            return sec - parsedJson.META.offset / 1000;
+                        };
+
+                        for (const line of parsedJson.judgeLineList) {
+                            if (!line.notes) continue;
+                            for (const note of line.notes) {
+                                if (note.type === 4 && !includeDrag) continue;
+                                if (note.isFake && !includeFake) continue;
+
+                                data.add(beatToSec(note.startTime) * (line.bpmfactor || 1));
+                            }
+                        }
+
+                        const dataArr = Array.from(data).sort((a, b) => a - b);
+                        const stream = _makeBinaryStreamFromPicksoundData(dataArr);
+
+                        const a = document.createElement("a");
+                        a.href = stream.tempUrl;
+                        a.download = `${file.name}.milpicksound`;
+                        a.click();
+                    } catch (e) {
+                        await showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                        return;
+                    }
+                };
+
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
             };
         } else {
             PuginPageCallback.forEach((v, k) => {
