@@ -746,21 +746,21 @@ CanvasRenderingContext2D.prototype.roundRectEx = function (x, y, w, h, r, color)
 
 class _StringReader {
     constructor(str) {
-        this.str = str;
-        this.pos = 0;
+        this.chars = Array.from(str);
+        this.pos   = 0;
     }
-
+  
     read(n) {
-        const ret = this.str.substring(this.pos, this.pos + n);
+        if (this.pos >= this.chars.length) return undefined;
+        const ret = this.chars.slice(this.pos, this.pos + n).join("");
         this.pos += n;
-        if (this.pos > this.str.length) return void 0;
         return ret;
     }
-
+  
     readUntil(c) {
-        const idx = this.str.indexOf(c, this.pos);
-        if (idx === -1) return void 0;
-        const ret = this.str.substring(this.pos, idx);
+        const idx = this.chars.indexOf(c, this.pos);
+        if (idx === -1) return undefined;
+        const ret = this.chars.slice(this.pos, idx).join("");
         this.pos = idx + 1;
         return ret;
     }
@@ -1216,3 +1216,62 @@ CanvasRenderingContext2D.prototype.pathCircleWithClip = function (x, y, r) {
     this.arc(x, y, r, 0, Math.PI * 2);
     this.clip();
 }
+
+CanvasRenderingContext2D.prototype.createH264Codec = async function (bitrate, framerate) {
+    const cfg = {
+        codec: "avc1.640032",
+        width: this.canvas.width,
+        height: this.canvas.height,
+        bitrate: bitrate,
+        framerate: framerate,
+        latencyMode: "realtime",
+        bitrateMode: "variable",
+        avc: { format: "annexb" }
+    };
+
+    const output = (chunk, meta) => {
+        encoder.encoded = { chunk, meta };
+    };
+
+    const encoder = new VideoEncoder({
+        output: output,
+        error: err => console.error(err),
+    });
+
+    encoder.configure(cfg);
+    encoder.frame_index = 0;
+    encoder.framerate = framerate;
+    return encoder;
+}
+
+CanvasRenderingContext2D.prototype.toH264 = async function (codec) {
+    const frame = new VideoFrame(this.canvas, {
+        timestamp: parseInt(codec.frame_index * 1e6 / codec.framerate),
+    });
+
+    codec.encode(frame, { keyFrame: codec.frame_index % Math.max(Math.ceil(codec.framerate / 4), 1) === 0 });
+    codec.frame_index++;
+    frame.close();
+    await codec.flush();
+    const chunk = codec.encoded.chunk;
+    const buf = new Uint8Array(chunk.byteLength);
+    chunk.copyTo(buf);
+    return [buf, chunk.timestamp];
+}
+
+CanvasRenderingContext2D.prototype.h264EncodePromisesMerge = async function (pms) {
+    const chunks = await Promise.all(pms);
+    const total = chunks.reduce((a, [c, _]) => a + c.length, chunks.length * 12);
+    const out = new Uint8Array(total);
+    const view = new DataView(out.buffer);
+    let offset = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+        const [h264_chunk, timestamp] = chunks[i];
+        view.setUint32(offset, h264_chunk.length, true);
+        view.setBigUint64(offset + 4, BigInt(timestamp), true);
+        out.set(h264_chunk, offset + 12);
+        offset += h264_chunk.length + 12;
+    }
+    return out;
+};

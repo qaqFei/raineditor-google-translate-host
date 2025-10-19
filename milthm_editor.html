@@ -1,6 +1,6 @@
 <head>
     <link rel="icon" href="./resources/milres/editor_icon.ico">
-    <title>Rain Editor v0.0.2-dev9</title>
+    <title>Rain Editor v0.0.2</title>
     <link rel="stylesheet" type="text/css" href="./css/scrollbar.css">
 </head>
 
@@ -21,11 +21,7 @@
                         <div id="script-run">运行脚本</div>
                         <div id="premake-anim">预制动画</div>
                         <div id="picksound-tool">采音工具</div>
-
-                        <!-- <div id="note-edit">编辑 Note</div> -->
-                        <!-- <div id="batch-note-edit">批量编辑 Note</div> -->
-                        <!-- <div id="batch-event-edit">批量编辑 Event</div> -->
-                        <!-- <div id="premake-anim-apply">应用预制动画</div> -->
+                        <div id="wasm-extension">可编程谱面扩展</div>
                     </div>
                 </div>
             </div>
@@ -90,6 +86,7 @@
             <div id="rt-bar">
                 <button id="back-home" class="milbtn" style="display: inline-flex;">回到首页</button>
                 <button id="save" class="milbtn" style="display: inline-flex;">保存</button>
+                <button id="open-rain-player-unity" class="milbtn" style="display: inline-flex;">从 Rain Player Unity 打开</button>
             </div>
 
             <!-- edit-page 开头的 div 的 id 命名遵循 f"edit-page-{进入这个page的按钮的id}" -->
@@ -173,6 +170,11 @@
                 <div id="edit-page-back-container"></div>
                 <div id="edit-page-picksound-tool-main"></div>
             </div>
+
+            <div id="edit-page-wasm-extension">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-wasm-extension-main"></div>
+            </div>
         </div>
     </div>
     
@@ -224,7 +226,11 @@
         width: 100%;
         height: 100%;
         /* background: linear-gradient(to bottom right, rgb(142, 197, 252), rgb(162, 66, 255)); */
-        background-color: gray;
+        background-image: url("./resources/milres/editor_bg.png");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: absolute;
         z-index: 1;
     }
 
@@ -254,21 +260,20 @@
     }
 
     .milbtn {
-        background: rgb(142, 197, 252);
+        border: 1.2px solid #353535;
+        background: linear-gradient(135deg, hsl(210, 25%, 88%), hsl(250, 20%, 90%));
         display: flex;
         justify-content: center;
         align-items: center;
-        border: none;
-        border-radius: 0.5em;
+        border-radius: 0.25em;
         user-select: none;
         font-family: milFont;
-        filter: drop-shadow(0 0 0.5em rgba(0, 0, 0, 0.5));
         padding: 0.22em;
         transition: all 0.2s ease-out;
     }
 
     .milbtn:hover {
-        background: rgb(126, 175, 224);
+        filter: brightness(0.95);
     }
 
     #rb-button-pages-container,
@@ -342,7 +347,7 @@
         width: calc(9% - 4px);
         /* height: 100%; */
         background-color: rgba(255, 0, 0, 0.8);
-        border-radius: 2em;
+        border-radius: 0.25em;
         transform: translateX(2px);
     }
 
@@ -357,24 +362,22 @@
     }
 
     .input-style1 {
-        background-color: rgb(142, 197, 252);
-        border: 0;
+        border: 1.2px solid #353535;
+        background: linear-gradient(135deg, hsl(210, 25%, 88%), hsl(250, 20%, 90%));
         text-align: center;
-        border-radius: 1em;
-        color: white;
-        transition: 0.2s ease-out all;
+        border-radius: 0.25em;
+        color: black;
+        transition: all 0.2s ease-out;
     }
 
     .input-style1:focus {
-        background-color: rgb(120, 169, 218);
-        /* transform: scale(1.01); */
+        filter: brightness(0.95);
         outline: none;
         border: 0;
     }
 
     .input-style1:hover {
-        background-color: rgb(120, 169, 218);
-        /* transform: scale(1.01); */
+        filter: brightness(0.95);
     }
 
     /* #edit-page-bpm-edit-footer {
@@ -480,7 +483,7 @@
         border: none;
         background-color: #fefefeee;
         border-radius: 3vh;
-        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.3));
+        filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
         overflow: hidden;
         user-select: none;
     }
@@ -745,6 +748,347 @@ zip:
     你可以使用"从采音文件导入到谱面"将 .milpicksound 文件导入到谱面中。
 
     导入的每个时间点会生成一个音符, 放置到0号线。
+`,
+    "help-picksound-export-phigros-official": `\
+    你可以使用 Phigros 官方格式谱面文件生成 .milpicksound 采音文件。
+`,
+    "help-picksound-export-phigros-rpe": `\
+    你可以使用 Re:PhiEdit 或其他使用 RPE 格式生成的 Phigros 自制谱面文件。
+
+    仅支持 json 格式, 请不要导入 zip, pez, pec 。
+`,
+    "help-picksound-export-ai": `\
+    使用本地的 AI 模型进行采音。
+    需要扩展: ai-picksound
+`,
+    "help-picksound-export-ai-threshold": `\
+    0 ~ 1 之间的浮点数, 用于控制采音的阈值。
+    值越大, 采音越严格, 采到的音符越少。
+    值越小, 采音越宽松, 采到的音符越多。
+`,
+    "help-picksound-export-ai-distance": `\
+    采音点最小间隔。
+`,
+    "help-picksound-export-ai-win-sec": `\
+    模型的输出窗口大小, 单位为秒。
+    不建议改动。
+`,
+    "help-picksound-export-ai-hop-sec": `\
+    模型的输出窗口之间的间隔, 单位为秒。
+    不建议改动。
+`,
+    "help-event-[0,0]": `\
+    线的X坐标事件, 顾名思义, 用于控制线的X坐标。
+
+    在屏幕内值为 -960 ~ 960 之间, 左侧为负数, 右侧为正数。
+`,
+    "help-event-[0,1]": `\
+    线的Y坐标事件, 顾名思义, 用于控制线的Y坐标。
+
+    在屏幕内值为 -540 ~ 540 之间, 下侧为负数, 上侧为正数。
+`,
+    "help-event-[0,2]": `\
+    线的透明度事件, 顾名思义, 用于控制线的透明度。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[0,3]": `\
+    线的大小事件, 顾名思义, 用于控制线的大小。
+
+    1 为原始大小, 0.5 为原始大小的一半, 2 为原始大小的两倍。
+
+    <0, 的值为未定义行为, 建议不要使用。
+`,
+    "help-event-[0,4]": `\
+    线的旋转事件, 顾名思义, 用于控制线的旋转。
+
+    单位为角度, 顺时针为正, 逆时针为负。
+`,
+    "help-event-[0,5]": `\
+    线的速度系数事件, 用于控制线速度的系数。
+
+    例如在时刻 t, 这条线的速度系数为 8, 在这条线上的一个 note 距离该线还有 500 单位远,
+    如果此时将速度系数从 8 改为 16, 这个 note 就距离该线还有 1000 单位远。
+
+    即 note当前垂直位置 = 速度事件算出的垂直位置 * 速度系数。
+
+    tip: 这会影响长条长度。
+`,
+    "help-event-[0,6]": `\
+    线的相对X坐标事件, 顾名思义, 用于控制线的相对X坐标。
+
+    该事件的值会加到线的X坐标上。
+`,
+    "help-event-[0,7]": `\
+    线的相对Y坐标事件, 顾名思义, 用于控制线的相对Y坐标。
+
+    该事件的值会加到线的Y坐标上。
+`,
+    "help-event-[0,8]": `\
+    线体透明度事件, 顾名思义, 用于控制线体的透明度。
+
+    线体就是圆圈连着的那根线。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[0,9]": `\
+    线头透明度事件, 顾名思义, 用于控制线头的透明度。
+
+    线头就是那个圆圈。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[0,10]": `\
+    线的故事版宽度, 无行为。
+`,
+    "help-event-[0,11]": `\
+    线的故事版高度, 无行为。
+`,
+    "help-event-[0,12]": `\
+    线的速度事件, 顾名思义, 用于控制线速度。
+
+    类似于 phigros 的速度事件。
+
+    我不知道怎么解释, 在时刻t, note的垂直位置 = 从0~t的线速度积分。
+    单位为 120单位 / 秒 (tip: 在后续计算中会受全局速度系数影响)。
+`,
+    "help-event-[0,13]": `\
+    线的note整体透明度事件, 顾名不思义, 控制的是这条线的全体note的透明度。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[0,14]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,15]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,16]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,17]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,18]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,19]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,20]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,21]": `\
+    弃用, 无行为。
+`,
+    "help-event-[0,22]": `\
+    线的颜色事件, 顾名思义, 用于控制线的颜色。
+
+    值为 0 ~ 255 之间的数, 分别表示红、绿、蓝、透明度。
+    例如 255,0,0,128 表示红色, 透明度为 50%。
+`,
+    "help-event-[0,23]": `\
+    线的可见区域事件, 顾名思义, 用于控制线的可见区域。
+
+    例如该值为 500 时, 只有note垂直坐标 <= 500 的note才会显示。
+`,
+    "help-event-[1,0]": `\
+    note的X坐标事件, 顾名思义, 用于控制note的X坐标。
+
+    是相对于线的。
+`,
+    "help-event-[1,1]": `\
+    note的Y坐标事件, 顾名思义, 用于控制note的Y坐标。
+
+    是相对于线的。
+
+    如果一个 note 不存在 Y 坐标事件, 则其 Y 会自动设为通过速度事件算出的垂直位置。
+    可就是说如果给一个 note 加了一个值恒为 100 的 Y 坐标事件, note 就会定在 100 的垂直位置。
+`,
+    "help-event-[1,2]": `\
+    note的透明度事件, 顾名思义, 用于控制note的透明度。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[1,3]": `\
+    note的大小事件, 顾名思义, 用于控制note的大小。
+
+    1 为原始大小, 0.5 为原始大小的一半, 2 为原始大小的两倍。
+    <0, 的值为未定义行为, 建议不要使用。
+`,
+    "help-event-[1,4]": `\
+    note的旋转事件, 顾名思义, 用于控制note的旋转。
+
+    单位为角度, 顺时针为负, 逆时针为正! (与线相反)
+`,
+    "help-event-[1,5]": `\
+    note的速度系数事件, 用于控制note速度的系数。
+
+    行为与线速度系数事件相同, 只不过只作用在该 note 上。
+`,
+    "help-event-[1,6]": `\
+    note的相对X坐标事件, 顾名思义, 用于控制note的相对X坐标。
+
+    该事件的值会加到note的X坐标上。
+`,
+    "help-event-[1,7]": `\
+    note的相对Y坐标事件, 顾名思义, 用于控制note的相对Y坐标。
+
+    该事件的值会加到note的Y坐标上。
+`,
+    "help-event-[1,8]": `\
+    note的线体透明度事件, 无行为。
+`,
+    "help-event-[1,9]": `\
+    note的线头透明度事件, 无行为。
+`,
+    "help-event-[1,10]": `\
+    note的故事版宽度, 无行为。
+`,
+    "help-event-[1,11]": `\
+    note的故事版高度, 无行为。
+`,
+    "help-event-[1,12]": `\
+    note的速度事件, 未实现。
+`,
+    "help-event-[1,13]": `\
+    note的note整体透明度事件, 无行为。
+`,
+    "help-event-[1,14]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,15]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,16]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,17]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,18]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,19]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,20]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,21]": `\
+    弃用, 无行为。
+`,
+    "help-event-[1,22]": `\
+    note的颜色事件, 顾名思义, 用于控制note的颜色。
+
+    与线颜色事件相同, 不过只作用在该 note 上。
+`,
+    "help-event-[1,23]": `\
+    note的可见区域事件, 无行为。
+`,
+    "help-event-[2,0]": `\
+    故事板的X坐标事件, 顾名思义, 用于控制故事板的X坐标。
+
+    在屏幕内值为 -960 ~ 960 之间, 左侧为负数, 右侧为正数。
+`,
+    "help-event-[2,1]": `\
+    故事板的Y坐标事件, 顾名思义, 用于控制故事板的Y坐标。
+    在屏幕内值为 -540 ~ 540 之间, 下侧为负数, 上侧为正数。
+`,
+    "help-event-[2,2]": `\
+    故事板的透明度事件, 顾名思义, 用于控制故事板的透明度。
+
+    值在 0 ~ 1 之间, 0 为完全透明, 1 为完全不透明。
+    超出 0 ~ 1 的值将会被截断。
+`,
+    "help-event-[2,3]": `\
+    故事板的大小事件, 顾名思义, 用于控制故事板的大小。
+
+    1 为原始大小, 0.5 为原始大小的一半, 2 为原始大小的两倍。
+    <0, 的值为未定义行为, 建议不要使用。
+`,
+    "help-event-[2,4]": `\
+    故事板的旋转事件, 顾名思义, 用于控制故事板的旋转。
+
+    单位为角度, 顺时针为正, 逆时针为负。
+`,
+    "help-event-[2,5]": `\
+    故事板的速度系数事件, 无行为。
+`,
+    "help-event-[2,6]": `\
+    故事板的相对X坐标事件, 顾名思义, 用于控制故事板的相对X坐标。
+
+    与线的相对X坐标事件相同, 但有些许诡异。
+`,
+    "help-event-[2,7]": `\
+    故事板的相对Y坐标事件, 顾名思义, 用于控制故事板的相对Y坐标。
+
+    与线的相对Y坐标事件相同, 但有些许诡异。
+`,
+    "help-event-[2,8]": `\
+    故事板的线体透明度事件, 无行为。
+`,
+    "help-event-[2,9]": `\
+    故事板的线头透明度事件, 无行为。
+`,
+    "help-event-[2,10]": `\
+    故事板的故事版宽度, 顾名思义, 用于控制故事板的故事版高度。
+
+    1 为原始大小, 0.5 为原始大小的一半, 2 为原始大小的两倍。
+    <0, 的值为未定义行为, 建议不要使用。
+
+    其实与大小事件相同, 只不过只作用在宽度上。
+`,
+    "help-event-[2,11]": `\
+    故事板的故事版高度, 顾名思义, 用于控制故事板的故事版高度。
+
+    1 为原始大小, 0.5 为原始大小的一半, 2 为原始大小的两倍。
+    <0, 的值为未定义行为, 建议不要使用。
+
+    其实与大小事件相同, 只不过只作用在高度上。
+`,
+    "help-event-[2,12]": `\
+    故事板的速度事件, 无行为。
+`,
+    "help-event-[2,13]": `\
+    故事板的整体透明度事件, 无行为。
+`,
+    "help-event-[2,14]": `\
+    故事板的左下X坐标事件, 未实现。
+`,
+    "help-event-[2,15]": `\
+    故事板的左下Y坐标事件, 未实现。
+`,
+    "help-event-[2,16]": `\
+    故事板的右下X坐标事件, 未实现。
+`,
+    "help-event-[2,17]": `\
+    故事板的右下Y坐标事件, 未实现。
+`,
+    "help-event-[2,18]": `\
+    故事板的左上X坐标事件, 未实现。
+`,
+    "help-event-[2,19]": `\
+    故事板的左上Y坐标事件, 未实现。
+`,
+    "help-event-[2,20]": `\
+    故事板的右上X坐标事件, 未实现。
+`,
+    "help-event-[2,21]": `\
+    故事板的右上Y坐标事件, 未实现。
+`,
+    "help-event-[2,22]": `\
+    故事板的颜色事件, 顾名思义, 用于控制故事板的颜色。
+
+    与线颜色事件相同, 不过只作用在该故事板上。
+`,
+    "help-event-[2,23]": `\
+    故事板的可见区域事件, 无行为。
 `,
         }[key];
     };
@@ -1874,6 +2218,7 @@ zip:
             $("#msg-renderer").width = window.innerWidth;
             $("#msg-renderer").height = window.innerHeight;
             mctx.scale(dpr, dpr);
+            redraw = true;
         };
         window.addEventListener("resize", onresize);
         onresize();
@@ -1897,11 +2242,17 @@ zip:
         return audioBuffer;
     };
 
-    const playSound = buf => {
+    const createABufferSource = buf => {
         const source = config.actx.createBufferSource();
         source.buffer = buf;
         source.connect(config.actx.destination);
+        return source;
+    };
+
+    const playSound = buf => {
+        const source = buf.preloaded_source || createABufferSource(buf);
         source.start();
+        buf.preloaded_source = createABufferSource(buf);
     };
 
     const loadAudio = async (url, master) => {
@@ -2008,7 +2359,7 @@ zip:
     const history_charts = [];
     var currhistoryi = -1;
     var lastchart = null;
-    const updateChartChange = () => {
+    const resetChartCachedStates = () => {
         ChartUtils.get_es_value_filter_cache.clear();
         config.morebets_cache.clear();
         if (window.pywebview) {
@@ -2022,19 +2373,26 @@ zip:
         y: (msgs.length ? Math.max(...msgs.map(x => x.y + h / 20)) : 0) + h / 80
     });
 
-    const onchartchanged = msg => {
-        for (const e of ChartUtils.getAllAnimations()) {
-            if (e.endTime.value < e.startTime.value) e.startTime = e.endTime;
-        }
-
-        pushMsg(msg);
-
+    const createChartBackupJson = () => {
         const backup = {};
 
         for (const k in config.chart) {
             if (k !== "editor") backup[k] = config.chart[k];
         }
 
+        return backup;
+    };
+
+    const onchartchanged = msg => {
+        redraw = true;
+
+        for (const e of ChartUtils.getAllAnimations()) {
+            if (e.endTime.value < e.startTime.value) e.startTime = e.endTime;
+        }
+
+        pushMsg(msg);
+
+        const backup = createChartBackupJson();
         const backup_json = JSON.stringify(backup);
         if (lastchart === backup_json) return;
         lastchart = backup_json;
@@ -2047,7 +2405,9 @@ zip:
         history_charts.push(backup.deepcopy());
         logger.info(`保存了更改, history ${currhistoryi}`);
         config.chart.editor.history.push(msg);
-        updateChartChange();
+        resetChartCachedStates();
+
+        redraw = true;
     };
 
     window.addEventListener("keydown", e => {
@@ -2063,7 +2423,8 @@ zip:
         logger.info(`撤销了更改, 回退到 history ${currhistoryi}`);
         config.chart.editor.history.push("撤销更改");
         pushMsg("撤销");
-        updateChartChange();
+        lastchart = JSON.stringify(createChartBackupJson());
+        resetChartCachedStates();
     });
 
     window.addEventListener("keydown", e => {
@@ -2079,8 +2440,147 @@ zip:
         logger.info(`重做了更改, 回退到 history ${currhistoryi}`);
         config.chart.editor.history.push("重做更改");
         pushMsg("重做");
-        updateChartChange();
+        lastchart = JSON.stringify(createChartBackupJson());
+        resetChartCachedStates();
     });
+
+    class MilChartWasm {
+        constructor(wasm) {
+            this._wasm = wasm;
+            if (!this._wasm) return;
+
+            this._ctx = this._wasm.instance.exports.CreateRuntimeContext();
+            console.log("wasm context created", this._ctx);
+        }
+
+        #free_string(ptr) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.FreeString(ptr);
+        }
+
+        #read_string(ptr) {
+            if (!this._wasm) return "";
+            const data = [];
+
+            while (true) {
+                const byte = (new Uint8Array(this._wasm.instance.exports.memory.buffer, ptr, 1))[0];
+                if (byte === 0) break;
+                data.push(byte);
+                ptr++;
+            }
+
+            return new TextDecoder("utf-8").decode(new Uint8Array(data));
+        }
+
+        on_combo_changed(combo) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.OnComboChanged(this._ctx, combo);
+        }
+
+        on_score_changed(score) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.OnScoreChanged(this._ctx, score);
+        }
+
+        on_accuracy_changed(accuracy) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.OnAccuracyChanged(this._ctx, accuracy);
+        }
+
+        on_progress_changed(progress) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.OnProgressChanged(this._ctx, progress);
+        }
+
+        on_note_judged(note_id, note_type, note_st, type, offset) {
+            if (!this._wasm) return;
+            this._wasm.instance.exports.OnNoteJudged(this._ctx, note_id, note_type, note_st, type, offset);
+        }
+
+        is_override_combo_number_string() {
+            if (!this._wasm) return false;
+            return this._wasm.instance.exports.IsOverrideComboNumberString(this._ctx) !== 0;
+        }
+
+        is_override_score_string() {
+            if (!this._wasm) return false;
+            return this._wasm.instance.exports.IsOverrideScoreString(this._ctx) !== 0;
+        }
+
+        is_override_accuracy_string() {
+            if (!this._wasm) return false;
+            return this._wasm.instance.exports.IsOverrideAccuracyString(this._ctx) !== 0;
+        }
+
+        is_override_progress() {
+            if (!this._wasm) return false;
+            return this._wasm.instance.exports.IsOverrideProgress(this._ctx) !== 0;
+        }
+
+        is_override_combo_text_string() {
+            if (!this._wasm) return false;
+            return this._wasm.instance.exports.IsOverrideComboTextString(this._ctx) !== 0;
+        }
+
+        get_combo_number_string() {
+            if (!this._wasm) return "";
+            const ptr = this._wasm.instance.exports.GetComboNumberString(this._ctx);
+            const str = this.#read_string(ptr);
+            this.#free_string(ptr);
+            return str;
+        }
+
+        get_score_string() {
+            if (!this._wasm) return "";
+            const ptr = this._wasm.instance.exports.GetScoreString(this._ctx);
+            const str = this.#read_string(ptr);
+            this.#free_string(ptr);
+            return str;
+        }
+
+        get_accuracy_string() {
+            if (!this._wasm) return "";
+            const ptr = this._wasm.instance.exports.GetAccuracyString(this._ctx);
+            const str = this.#read_string(ptr);
+            this.#free_string(ptr);
+            return str;
+        }
+
+        get_progress() {
+            if (!this._wasm) return 0;
+            return this._wasm.instance.exports.GetProgress(this._ctx);
+        }
+
+        get_combo_text_string() {
+            if (!this._wasm) return "";
+            const ptr = this._wasm.instance.exports.GetComboTextString(this._ctx);
+            const str = this.#read_string(ptr);
+            this.#free_string(ptr);
+            return str;
+        }
+
+        get enabled() {
+            return !!this._wasm;
+        }
+
+        get raw() {
+            return this._wasm.raw;
+        }
+    }
+
+    const load_mil_chart_wasm = async arraybuf => {
+        try {
+            const wasmins = await WebAssembly.instantiate(arraybuf, { });
+            wasmins.raw = arraybuf;
+            config.wasmext = new MilChartWasm(wasmins);
+            config.enable_wasmext = true;
+        } catch (e) {
+            config.wasmext = new MilChartWasm();
+            config.enable_wasmext = false;
+            console.error("加载 wasm 扩展失败", e);
+            await showDialog("提示", "加载 wasm 扩展失败", "确定");
+        }
+    };
 
     const launch_editor = async () => {
         config = $("#res-selectors").getres();
@@ -2097,6 +2597,18 @@ zip:
         } else {
             config.chart = await fetch(URL.createObjectURL(config.chart)).then(res => res.json());
         }
+
+        if (config.rs_wasmext) {
+            const wasmext_bytes = await fetch(URL.createObjectURL(config.rs_wasmext)).then(res => res.arrayBuffer());
+            load_mil_chart_wasm(wasmext_bytes);
+        }
+
+        if (!config.wasmext) {
+            config.enable_wasmext = false;
+            config.wasmext = new MilChartWasm();
+        }
+
+        config.default_cloud_compile_wasm_server = "";
 
         config.chart.bpms.sort((a, b) => a.time - b.time);
 
@@ -2149,6 +2661,7 @@ zip:
 
         config.pause_btn = await loadImage("./resources/milres/buttons/light/pause.png");
         config.line_head = await loadImage("./resources/milres/line_head.png");
+        config.progressbar_image = await loadImage("./resources/milres/progressbar.png");
 
         await loadFont("milFont", "./resources/milres/milfont.ttf");
         await loadFont("milFontBold", "./resources/milres/milfont_bold.ttf");
@@ -2167,14 +2680,16 @@ zip:
         $("#top-bar-beats-per-scr-inputer").onchange = () => {
             const newval = parseInt($("#top-bar-beats-per-scr-inputer").value);
             if (!isNaN(newval) && newval > 0) config.eop.beat_per_page = newval;
+            redraw = true;
         };
         $("#top-bar-beat-split-inputer").value = config.eop.beat_spilt;
         $("#top-bar-beat-split-inputer").onchange = () => {
             const newval = parseInt($("#top-bar-beat-split-inputer").value);
             if (!isNaN(newval) && newval > 0) config.eop.beat_spilt = newval;
+            redraw = true;
         };
 
-        config.flow_speed = 1.33;
+        config.flow_speed = 1.66;
         config.note_scale = 335 / 185;
         config.note_imgs = {
             tap: await loadImage("./resources/milres/tap.png"),
@@ -2322,16 +2837,19 @@ zip:
         $("#top-bar-editing-auto-lines-checkbox").checked = config.chart.editor.editing.auto;
         $("#top-bar-editing-auto-lines-checkbox").onchange = () => {
             config.chart.editor.editing.auto = $("#top-bar-editing-auto-lines-checkbox").checked;
+            redraw = true;
         };
 
         $("#top-bar-editing-autosort-lines-checkbox").checked = config.chart.editor.editing.auto_sort_byx;
         $("#top-bar-editing-autosort-lines-checkbox").onchange = () => {
             config.chart.editor.editing.auto_sort_byx = $("#top-bar-editing-autosort-lines-checkbox").checked;
+            redraw = true;
         };
 
         $("#top-bar-auto-attach-checkbox").checked = config.chart.editor.editing.auto_attach_event;
         $("#top-bar-auto-attach-checkbox").onchange = () => {
             config.chart.editor.editing.auto_attach_event = $("#top-bar-auto-attach-checkbox").checked;
+            redraw = true;
         };
 
         $("#top-bar-global-flows-inputer").value = config.flow_speed;
@@ -2342,6 +2860,7 @@ zip:
             } else {
                 $("#top-bar-global-flows-inputer").value = config.flow_speed;
             }
+            redraw = true;
         };
 
         $("#top-bar-global-note-scale").value = config.global_note_scale;
@@ -2352,6 +2871,7 @@ zip:
             } else {
                 $("#top-bar-global-note-scale").value = config.global_note_scale;
             }
+            redraw = true;
         };
         
         $("#top-bar-track-edit-lw").value = config.edit_max_track_per_page;
@@ -2362,6 +2882,7 @@ zip:
             } else {
                 $("#top-bar-track-edit-lw").value = config.edit_max_track_per_page;
             }
+            redraw = true;
         };
 
         const eventTypeSelector = $("#top-bar-editing-event-type-selector");
@@ -2505,6 +3026,7 @@ zip:
                 config.chart.editor.editing.new_event.type = newval;
                 onupdate_editing_new_event_data();
             }
+            redraw = true;
         };
         $("#top-bar-editing-new-event-data-bearer-type-selector").onchange = () => {
             const newval = parseInt($("#top-bar-editing-new-event-data-bearer-type-selector").value);
@@ -2512,6 +3034,7 @@ zip:
                 config.chart.editor.editing.new_event.bearer_type = newval;
                 onupdate_editing_new_event_data();
             }
+            redraw = true;
         };
         $("#top-bar-editing-new-event-data-bearer-inputer").onchange = () => {
             const newval = parseInt($("#top-bar-editing-new-event-data-bearer-inputer").value);
@@ -2519,11 +3042,13 @@ zip:
                 config.chart.editor.editing.new_event.bearer = newval;
                 onupdate_editing_new_event_data();
             }
+            redraw = true;
         };
 
         $("#top-bar-show-invisible-lines-checkbox").checked = config.chart.editor.show_invisible_lines;
         $("#top-bar-show-invisible-lines-checkbox").onchange = () => {
             config.chart.editor.show_invisible_lines = $("#top-bar-show-invisible-lines-checkbox").checked;
+            redraw = true;
         };
 
         config.event_icons = [];
@@ -2589,6 +3114,8 @@ zip:
     var editing_note_lines_note_areas = [];
     var editing_note_lines_get_index_from_x = x => -1;
     var editing_note_lines_get_beat_from_y = y => [0, 0, 1];
+    var editing_note_lines_get_number_beat_from_y = y => 0;
+    var editing_note_lines_get_y_from_beat = y => 0;
     var lines_pos = new Map();
     var notes_rects = [];
     var display_eop = false;
@@ -2600,8 +3127,21 @@ zip:
     var editing_event_lines_get_index_from_x = x => -1;
     var edtracks = [];
     var now_t = 0.0;
+    var last_now_t = -1.0;
+    var redraw = true;
 
     const render = () => {
+        now_t = config.audio.currentTime - config.chart.meta.offset;
+        redraw ||= now_t !== last_now_t;
+        last_now_t = now_t;
+
+        if (!redraw) {
+            requestAnimationFrame(render);
+            return;
+        }
+
+        redraw = false;
+
         const fps = 1000 / (performance.now() - render.lastCall);
         render.lastCall = performance.now();
         lines_pos.clear();
@@ -2609,7 +3149,6 @@ zip:
 
         const chart = config.chart;
         const chart_render_area = config.chart_render_area;
-        now_t = config.audio.currentTime - config.chart.meta.offset;
         const now_beat = ChartUtils.sec2beat(now_t);
 
         const set_editor_area = (name, rect, mult = true) => {
@@ -2881,6 +3420,7 @@ zip:
                                 config.played_clicksounds.add(note.index);
 
                                 if (!config.audio.paused && !note.isFake) playSound(config.clicksounds[note.type]);
+                                config.wasmext.on_note_judged(note.index, note.type, ChartUtils.beat2sec(note.time.value), 0, 0.0);
                             } else if (!noteClicked && config.played_clicksounds.has(note.index)) {
                                 config.played_clicksounds.delete(note.index);
                             }
@@ -3016,6 +3556,22 @@ zip:
                 );
             });
 
+            let score = combo / all_combo_count * 1010000;
+            let songprogress = config.audio.currentTime / config.audio.duration;
+
+            config.wasmext.on_combo_changed(combo);
+            config.wasmext.on_score_changed(score);
+            config.wasmext.on_accuracy_changed(1.0);
+            config.wasmext.on_progress_changed(songprogress);
+
+            const comboString = config.wasmext.is_override_combo_number_string() ? config.wasmext.get_combo_number_string() : combo.toString();
+            const scoreString = config.wasmext.is_override_score_string() ? config.wasmext.get_score_string() : Math.round(score).toString().padStart(7, "0");
+            const accString = config.wasmext.is_override_accuracy_string() ? config.wasmext.get_accuracy_string() : "100.0%";
+            if (config.wasmext.is_override_progress()) {
+                songprogress = config.wasmext.get_progress();
+            }
+            const comboTextString = config.wasmext.is_override_combo_text_string() ? config.wasmext.get_combo_text_string() : config.combo_text;
+
             ctx.drawAlphaImage(
                 config.pause_btn,
                 0.0187 * (aw + ah),
@@ -3050,29 +3606,34 @@ zip:
             );
 
             ctx.drawTextEx(
-                `${combo}`,
+                comboString,
                 aw * 0.5,
                 (128 / 1080) * ah,
                 `${(aw + ah) / 60}px milFont`,
                 "white", "center", "middle"
             );
 
-            const score = combo / all_combo_count * 1010000;
             ctx.drawTextEx(
-                Math.round(score).toString().padStart(7, "0"),
+                scoreString,
                 aw * 0.9734375,
                 0.016 * (aw + ah),
                 `${(aw + ah) / 58}px milFont`,
                 "white", "right", "top"
             );
 
-            const acc = 100.0;
             ctx.drawTextEx(
-                `${acc.toFixed(2)}%`,
+                accString,
                 aw * 0.9734375,
                 (107 / 1080) * ah,
                 `${(aw + ah) / 75}px milFont`,
                 "rgba(255, 255, 255, 0.7)", "right", "top"
+            );
+
+            ctx.drawImage(
+                config.progressbar_image,
+                0, 0,
+                songprogress * aw,
+                (9 / 1080) * ah
             );
 
             ctx.restore();
@@ -3228,23 +3789,35 @@ zip:
 
                         if (lineidx !== null) {
                             const line = ChartUtils.lineFromIdx(lineidx);
+                            const boxing = boxingNote || boxingEvent;
                             for (const note of line.notes) {
                                 const startY = gety(note.time.value);
                                 const endY = gety(note.endTime.value);
                                 const noteIm = config.note_imgs[note.resname];
                                 const noteWidth = track_width * 0.8;
                                 const noteHeight = noteWidth / noteIm.width * noteIm.height;
+                                let draw = true;
+                                
+                                if (endY - noteHeight / 2 > ah) {
+                                    if (boxing) draw = false;
+                                    else continue;
+                                }
 
-                                if (endY - noteHeight / 2 > ah) continue;
+                                if (startY < -ah) {
+                                    if (boxing) draw = false;
+                                    else break;
+                                }
 
-                                epr.save();
-                                if (editing_note === note.index || boxingNoteIdxs.includes(note.index)) applyCtxColorFilter(epr, 0.0, 1.0, 0.0);
+                                if (draw) epr.save();
+                                if (draw && (editing_note === note.index || boxingNoteIdxs.includes(note.index))) applyCtxColorFilter(epr, 0.0, 1.0, 0.0);
                                 if (!note.ishold) {
-                                    epr.drawRotateImage(
-                                        noteIm,
-                                        currx, startY,
-                                        noteWidth, noteHeight, -90
-                                    );
+                                    if (draw) {
+                                        epr.drawRotateImage(
+                                            noteIm,
+                                            currx, startY,
+                                            noteWidth, noteHeight, -90
+                                        );
+                                    }
 
                                     editing_note_lines_note_areas.push([note.index, [currx - noteWidth / 2, startY - noteHeight / 2, noteWidth, noteHeight]]);
                                 } else {
@@ -3252,24 +3825,24 @@ zip:
                                     const headLength = tailLength = noteWidth / 2;
                                     const bodyLength = Math.max(0.0, Math.abs(endY - startY));
                                     const holdTotalLength = headLength + bodyLength + tailLength;
-
-                                    epr.drawAnchorWCenterRotateImage(
-                                        ctx.createTempClip(
-                                            noteIm, atlas,
-                                            noteWidth, 
-                                            headLength, bodyLength, tailLength
-                                        ),
-                                        currx, startY,
-                                        holdTotalLength, noteWidth,
-                                        -90, 1.0,
-                                        -headLength
-                                    );
+                                    
+                                    if (draw) {
+                                        epr.drawAnchorWCenterRotateImage(
+                                            ctx.createTempClip(
+                                                noteIm, atlas,
+                                                noteWidth, 
+                                                headLength, bodyLength, tailLength
+                                            ),
+                                            currx, startY,
+                                            holdTotalLength, noteWidth,
+                                            -90, 1.0,
+                                            -headLength
+                                        );
+                                    }
 
                                     editing_note_lines_note_areas.push([note.index, [currx - noteWidth / 2, startY - holdTotalLength + headLength, noteWidth, holdTotalLength]]);
                                 }
-                                epr.restore();
-
-                                if (startY < -ah) break;
+                                if (draw) epr.restore();
                             }
 
                             const lineIdxDisplaySize = [
@@ -3322,6 +3895,22 @@ zip:
                     };
 
                     editing_note_lines_get_beat_from_y = y => parseBeatStr(fmtBeatStr(getbeat(y) + 1 / config.eop.beat_spilt / 2));
+                    editing_note_lines_get_number_beat_from_y = y => getbeat(y);
+                    editing_note_lines_get_y_from_beat = beat => gety(beat);
+
+                    if (boxingNote) {
+                        const lastbeat = ChartUtils.sec2beat(boxNoteStartTime);
+                        const currbeat = ChartUtils.sec2beat(config.audio.currentTime);
+                        boxNoteStart[1] -= gety(currbeat) - gety(lastbeat);
+                        boxNoteStartTime = config.audio.currentTime;
+                    }
+
+                    if (boxingEvent) {
+                        const lastbeat = ChartUtils.sec2beat(boxEventStartTime);
+                        const currbeat = ChartUtils.sec2beat(config.audio.currentTime);
+                        boxEventStart[1] -= gety(currbeat) - gety(lastbeat);
+                        boxEventStartTime = config.audio.currentTime;
+                    }
 
                     if (boxingNote) {
                         const x1 = Math.min(boxNoteStart[0], boxNoteEnd[0]);
@@ -3918,6 +4507,7 @@ zip:
                         <option value="22"${e.type === 22 ? " selected" : ""}>${MIL_CES.EnumAnimationTypeName[22]}</option>
                         <option value="23"${e.type === 23 ? " selected" : ""}>${MIL_CES.EnumAnimationTypeName[23]}</option>
                     </select> <br>
+                    <div class="help-btn" onclick="showDialog('帮助-动画类型', getHelpText('help-event-[${e.bearer_type},${e.type}]'), '确定')" style="display: inline-flex;" small></div> <br>
                     <br> <span style="font-family: milFontBold">缓动</span> <br>
                     <span>缓动类型: </span> <select id="edit-page-event-edit-item-ease-type" class="input-style1">
                         <option value="0"${e.ease.type === 0 ? " selected" : ""}>缓入</option>
@@ -3946,6 +4536,7 @@ zip:
                     <canvas id="edit-page-event-edit-item-ease-canvas" width="200" height="200" style="width: 200px; height: 200px; background-color: #111;"></canvas> <br>
                     <br> <button id="edit-page-event-edit-item-delete" class="milbtn" style="display: inline-flex;">删除该 event</button> <br>
                     <br> <button id="edit-page-event-edit-item-copy-to" class="milbtn" style="display: inline-flex;">复制到...</button> <br>
+                    <!-- <br> <button id="edit-page-event-edit-item-auto-tail" class="milbtn" style="display: inline-flex;">垫尾</button> <br> -->
                 `;
 
                 for (const id of [
@@ -3967,11 +4558,28 @@ zip:
                 }
 
                 page.querySelector("#edit-page-event-edit-item-copy-to").addEventListener("click", () => {
-                    const copy_to = prompt("请输入要复制到的对象序号, 逗号分割").replaceAll("，", ",").replaceAll(" ", "");
+                    const copy_to = prompt("请输入要复制到的对象序号, 逗号分割, 可以使用..表示范围").replaceAll("，", ",").replaceAll(" ", "").replaceAll("。", ".");
                     if (!copy_to) return;
-                    const copy_to_list = copy_to.split(",").map(Number).filter(x => !isNaN(x));
                     const e = ChartUtils.eventFromIdx(datas.eidx);
-                    for (const i of copy_to_list) {
+
+                    let target_lines = new Set();
+
+                    for (const i of copy_to.split(",")) {
+                        if (!i) continue;
+                        if (i.includes("..")) {
+                            const [start, end] = i.split("..").map(x => parseInt(x));
+                            if (isNaN(start) || isNaN(end)) continue;
+                            for (let i = start; i <= end; i++) target_lines.add(i);
+                        } else {
+                            const n = parseInt(i);
+                            if (isNaN(n)) continue;
+                            target_lines.add(n);
+                        }
+                    }
+
+                    target_lines = [...target_lines];
+
+                    for (const i of target_lines) {
                         if (i === e.bearer) continue;
                         const bearer_data = {
                             bearer_type: e.bearer_type,
@@ -3985,8 +4593,8 @@ zip:
                         bearer.animations.push(new_e);
                         bearer.animations.sortbykey(x => x.startTime.value);
                     }
-                    logger.info(`复制了序号为 ${datas.eidx} 的event到 ${copy_to_list.join(",")}`);
-                    onchartchanged(`复制了序号为 ${datas.eidx} 的event到 ${copy_to_list.join(",")}`);
+                    logger.info(`复制了序号为 ${datas.eidx} 的event到 ${target_lines.join(",")}`);
+                    onchartchanged(`复制了序号为 ${datas.eidx} 的event到 ${target_lines.join(",")}`);
                 });
 
                 onDelete = () => {
@@ -4033,8 +4641,32 @@ zip:
                     logger.info(`粘贴了序号为 ${copyEditingData} 的event到 ${newE.index}`);
                     onchartchanged(`粘贴了序号为 ${copyEditingData} 的event到 ${newE.index}`);
                 };
-
+                
                 page.querySelector("#edit-page-event-edit-item-delete").addEventListener("click", onDelete);
+
+                // page.querySelector("#edit-page-event-edit-item-auto-tail").addEventListener("click", () => {
+                //     const tail = {
+                //         startTime: e.endTime,
+                //         endTime: (e.endTime.value + 1 / 32).tobeat,
+                //         start: e.end,
+                //         end: e.end,
+                //         bearer_type: e.bearer_type,
+                //         bearer: e.bearer,
+                //         ease: {
+                //             type: 0, press: 0, 
+                //             isValueExp: false, cusValueExp: "",
+                //             clipLeft: 0.0, clipRight: 1.0,
+                //         },
+                //         index: ChartUtils.nextEventIdx()
+                //     };
+
+                //     const bearer = ChartUtils.objFromBearerData(tail);
+                //     if (bearer === null) return;
+                //     bearer.animations.push(tail);
+                //     bearer.animations.sortbykey(x => x.startTime.value);
+                //     logger.info(`垫尾事件 ${JSON.stringify(tail)}`);
+                //     onchartchanged(`垫尾事件 ${JSON.stringify(tail)}`);
+                // });
 
                 const ecvs = page.querySelector("#edit-page-event-edit-item-ease-canvas");
                 const ectx = ecvs.getContext("2d");
@@ -4583,7 +5215,7 @@ zip:
                     endTime: { type: "alias-copy", data: "startTime" },
                     start: { type: "input", input_type: "number", default: 0.0 },
                     end: { type: "input", input_type: "number", default: 0.0 },
-                    type: { type: "select", data: Array.from( {length: 24} ).map(i => {[i, MIL_CES.EnumAnimationTypeName[i]]}) },
+                    type: { type: "select", data: Array.from( {length: 24} ).fill(0).map((_, i) => [i, MIL_CES.EnumAnimationTypeName[i]]) },
                     bearer_type: { type: "input", transformer: x => {
                         x = parseInt(x);
                         if (isNaN(x) || !(0 <= x && x <= 2)) return null;
@@ -4594,8 +5226,8 @@ zip:
                         if (isNaN(x) || 0 < x) return null;
                         return x;
                     }, input_type: "number", default: 0 },
-                    "ease.type": { type: "select", data: Array.from( {length: 3} ).map(i => [i, MIL_CES.EnumEaseTypeText[i]]) },
-                    "ease.press": { type: "select", data: Array.from( { length: 11 } ).map(i => [i, MIL_CES.EnumEasePressText[i]]) },
+                    "ease.type": { type: "select", data: Array.from( {length: 3} ).fill(0).map((_, i) => [i, MIL_CES.EnumEaseTypeText[i]]) },
+                    "ease.press": { type: "select", data: Array.from( { length: 11 } ).fill(0).map((_, i) => [i, MIL_CES.EnumEasePressText[i]]) },
                     "ease.isValueExp": { type: "select", data: [[true, "true"], [false, "false"]] },
                     "ease.cusValueExp": { type: "input", input_type: "text", default: "" },
                     "ease.clipLeft": { type: "input", transformer: x => {
@@ -4875,7 +5507,70 @@ zip:
                 导入假音符: <input type="checkbox" id="edit-page-picksound-tool-import-include-fake" checked> <br>
                 导入drag: <input type="checkbox" id="edit-page-picksound-tool-import-include-drag" checked> <br>
                 <button class="milbtn" onclick="importPicksoundToChart()" style="margin-top: 4px;">导入</button>
+                <br><br>
+
+                <span>从 Phigros 官谱生成采音文件</span>
+                <div class="help-btn" onclick="showDialog('帮助-从 Phigros 官谱生成采音文件', getHelpText('help-picksound-export-phigros-official'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-phigros-official-file" accept=".json" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-official-include-drag" checked> <br>
+                <button class="milbtn" onclick="importPicksoundFromPhigrosOfficial()" style="margin-top: 4px;">生成</button>
+                <br><br>
+
+                <span>从 Phigros 自制谱生成采音文件</span>
+                <div class="help-btn" onclick="showDialog('帮助-从 Phigros 自制谱生成采音文件', getHelpText('help-picksound-export-phigros-rpe'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-phigros-rpe-file" accept=".json" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                包含假音符: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-fake" checked> <br>
+                包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-drag" checked> <br>
+                <button class="milbtn" onclick="importPicksoundFromPhigrosRPE()" style="margin-top: 4px;">生成</button>
+                <br><br>
+
+                <span>使用 AI 采音</span>
+                <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音', getHelpText('help-picksound-export-ai'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                阈值:
+                <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音-阈值', getHelpText('help-picksound-export-ai-threshold'), '确定')" style="display: inline-flex;" small></div>
+                <input type="number" id="edit-page-picksound-tool-import-ai-infer-threshold" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="1e-6" step="5e-8">
+                <br>
+                最小间隔:
+                <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音-最小间隔', getHelpText('help-picksound-export-ai-distance'), '确定')" style="display: inline-flex;" small></div>
+                <input type="number" id="edit-page-picksound-tool-import-ai-distance" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="0.1" step="0.005">
+                <br>
+                投票窗口长度:
+                <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音-投票窗口长度', getHelpText('help-picksound-export-ai-win-sec'), '确定')" style="display: inline-flex;" small></div>
+                <input type="number" id="edit-page-picksound-tool-import-ai-win-sec" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="4.0" step="0.1">
+                <br>
+                投票窗口间隔:
+                <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音-投票窗口间隔', getHelpText('help-picksound-export-ai-hop-sec'), '确定')" style="display: inline-flex;" small></div>
+                <input type="number" id="edit-page-picksound-tool-import-ai-hop-sec" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="0.5" step="0.05">
+                <button class="milbtn" onclick="importPicksoundFromAI()" style="margin-top: 4px;">生成</button>
+                <br><br>
             `;
+
+            const _makeBinaryStreamFromPicksoundData = dataArr => {
+                const stream = new BinaryOutStream();
+
+                // header
+                stream.writeStringNoLength("MILPICKSOUND");
+                stream.writeUInt32(currentPicksoundFileVersion);
+                stream.writeUInt64(dataArr.length);
+                stream.writeUInt32(0); // reserved
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+                stream.writeUInt32(0);
+
+                // data
+                for (const t of dataArr) {
+                    stream.writeDouble(t);
+                }
+
+                return stream;
+            };
 
             window.exportPicksoundFromChart = () => {
                 const pickSoundData = new Set();
@@ -4891,25 +5586,7 @@ zip:
                 }
 
                 const pickSoundDataArr = Array.from(pickSoundData).sort((a, b) => a - b);
-                const stream = new BinaryOutStream();
-
-                // header
-                stream.writeStringNoLength("MILPICKSOUND");
-                stream.writeUInt32(currentPicksoundFileVersion);
-                stream.writeUInt64(pickSoundDataArr.length);
-                stream.writeUInt32(0); // reserved
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-                stream.writeUInt32(0);
-
-                // data
-                for (const t of pickSoundDataArr) {
-                    stream.writeDouble(t);
-                }
+                const stream = _makeBinaryStreamFromPicksoundData(pickSoundDataArr);
 
                 const a = document.createElement("a");
                 a.href = stream.tempUrl;
@@ -4978,6 +5655,261 @@ zip:
                 
                 freader.readAsArrayBuffer(file);
             };
+        
+            window.importPicksoundFromPhigrosOfficial = () => {
+                const file = $("#edit-page-picksound-tool-import-phigros-official-file").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                const includeDrag = $("#edit-page-picksound-tool-import-phigros-official-include-drag").checked;
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    try {
+                        const parsedJson = JSON.parse(e.target.result);
+                        const data = new Set();
+
+                        for (const line of parsedJson.judgeLineList) {
+                            const notes = line.notesAbove.concat(line.notesBelow);
+                            const secPerBeat = 60 / line.bpm / 32;
+                            for (const note of notes) {
+                                if (note.type === 2 && !includeDrag) continue;
+                                data.add(note.time * secPerBeat - parsedJson.offset);
+                            }
+                        }
+
+                        const dataArr = Array.from(data).sort((a, b) => a - b);
+                        const stream = _makeBinaryStreamFromPicksoundData(dataArr);
+
+                        const a = document.createElement("a");
+                        a.href = stream.tempUrl;
+                        a.download = `${file.name}.milpicksound`;
+                        a.click();
+                    } catch (e) {
+                        await showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                        return;
+                    }
+                };
+
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
+            };
+
+            window.importPicksoundFromPhigrosRPE = () => {
+                const file = $("#edit-page-picksound-tool-import-phigros-rpe-file").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                const includeFake = $("#edit-page-picksound-tool-import-phigros-rpe-include-fake").checked;
+                const includeDrag = $("#edit-page-picksound-tool-import-phigros-rpe-include-drag").checked;
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    try {
+                        const parsedJson = JSON.parse(e.target.result);
+                        const bpms = parsedJson.BPMList;
+                        const data = new Set();
+
+                        const beatToSec = rpeBeat => {
+                            let beatVal = rpeBeat.value;
+                            let sec = 0;
+
+                            if (bpms.length === 1) {
+                                sec = beatVal * 60 / bpms[0].bpm;
+                            } else {
+                                for (let i = 0; i < bpms.length; i++) {
+                                    const e = bpms[i];
+                                    if (i != bpms.length - 1) {
+                                        const et_beat = bpms[i + 1].startTime.value - e.startTime.value;
+
+                                        if (beatVal >= et_beat) {
+                                            sec += et_beat * 60 / e.bpm;
+                                            beatVal -= et_beat;
+                                        } else {
+                                            sec += beatVal * 60 / e.bpm;
+                                            break;
+                                        }
+                                    } else {
+                                        sec += beatVal * 60 / e.bpm;
+                                    }
+                                }
+                            }
+
+                            return sec - parsedJson.META.offset / 1000;
+                        };
+
+                        for (const line of parsedJson.judgeLineList) {
+                            if (!line.notes) continue;
+                            for (const note of line.notes) {
+                                if (note.type === 4 && !includeDrag) continue;
+                                if (note.isFake && !includeFake) continue;
+
+                                data.add(beatToSec(note.startTime) * (line.bpmfactor || 1));
+                            }
+                        }
+
+                        const dataArr = Array.from(data).sort((a, b) => a - b);
+                        const stream = _makeBinaryStreamFromPicksoundData(dataArr);
+
+                        const a = document.createElement("a");
+                        a.href = stream.tempUrl;
+                        a.download = `${file.name}.milpicksound`;
+                        a.click();
+                    } catch (e) {
+                        await showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                        return;
+                    }
+                };
+
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
+            };
+        
+            const AIInferThreshold = $("#edit-page-picksound-tool-import-ai-infer-threshold");
+            AIInferThreshold.addEventListener("change", () => {
+                AIInferThreshold.value = parseFloat(AIInferThreshold.value).toExponential();
+            });
+
+            window.importPicksoundFromAI = async () => {
+                if (!window.pywebview || !await pywebview.api.hasExtension("ai-picksound")) {
+                    showDialog("提示", "请先安装 ai-picksound 扩展", "确定");
+                    return;
+                }
+
+                if (!config.chart.lines.length) {
+                    showDialog("错误", "当前谱面无可用线", "确定");
+                    return;
+                }
+
+                const dlgData = {};
+                showDialog("正在处理", "等等后端响应...", "完成", null, dlgData);
+                dlgData.set_button_state(false);
+                window.set_ai_picksound_state = dlgData.set_content;
+                const times = await pywebview.api.aiPicksound(config.raw_native_audio_path, {
+                    INFER_THRESHOLD: parseFloat(AIInferThreshold.value),
+                    INFER_DISTANCE: parseFloat($("#edit-page-picksound-tool-import-ai-distance").value),
+                    INFER_WIN_SEC: parseFloat($("#edit-page-picksound-tool-import-ai-win-sec").value),
+                    INFER_HOP_SEC: parseFloat($("#edit-page-picksound-tool-import-ai-hop-sec").value),
+                });
+
+                for (const t of times) {
+                    const beat = ChartUtils.sec2beat(t).tobeat;
+                    const note = {
+                        time: beat,
+                        endTime: beat,
+                        isFake: false,
+                        type: MIL_CES.EnumNoteType.Hit,
+                        isAlwaysPerfect: false,
+                        index: ChartUtils.nextNoteIdx()
+                    };
+
+                    config.chart.lines[0].notes.push(note);
+                }
+
+                config.chart.lines[0].notes.sort((a, b) => a.time.value - b.time.value);
+                const msg = `AI生成了 ${times.length} 个 note`;
+                logger.info(msg);
+                onchartchanged(msg);
+                dlgData.set_button_state(true);
+            };
+        } else if (name_match("wasm-extension")) {
+            page.querySelector("#edit-page-wasm-extension-main").innerHTML = `
+                <span id="edit-page-wasm-extension-info"></span> <br>
+                <button onclick="removeWasmExtension()" class="milbtn" style="display: inline-flex;">移除存在的wasm扩展</button>
+                <br><br>
+                <input type="file" id="edit-page-wasm-extension-import" accept=".wasm" class="input-style1"> <br>
+                <button onclick="importWasmFromLocal()" class="milbtn" style="display: inline-flex;">从本地导入wasm扩展到谱面</button> <br> <br>
+                云端编译wasm扩展服务器: <input type="text" id="edit-page-wasm-extension-server" class="input-style1" value="${config.default_cloud_compile_wasm_server}"> <br>
+                云端编译wasm扩展源文件: <input type="file" id="edit-page-wasm-extension-source" accept=".cpp" class="input-style1" style="display: inline-flex;"> <br>
+                <button onclick="compileWasmFromCloud()" class="milbtn" style="display: inline-flex;">从云端编译wasm扩展导入到谱面</button>
+            `;
+
+            const update = () => {
+                page.querySelector("#edit-page-wasm-extension-info").innerHTML = `是否启用wasm扩展: ${config.enable_wasmext}`;
+            };
+
+            update();
+
+            window.removeWasmExtension = () => {
+                if (!config.enable_wasmext) {
+                    showDialog("提示", "当前谱面未启用wasm扩展", "确定");
+                    return;
+                }
+
+                config.enable_wasmext = false;
+                config.wasmext = new MilChartWasm();
+                onchartchanged("移除了wasm扩展");
+                update();
+            };
+
+            window.importWasmFromLocal = () => {
+                const file = $("#edit-page-wasm-extension-import").files[0];
+                if (!file) {
+                    showDialog("提示", "请先选择一个wasm文件", "确定");
+                    return;
+                }
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    await load_mil_chart_wasm(e.target.result);
+                    update();
+                };
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsArrayBuffer(file);
+            };
+
+            window.compileWasmFromCloud = async () => {
+                const server = $("#edit-page-wasm-extension-server").value;
+                if (!server) {
+                    showDialog("提示", "请先输入云端编译wasm扩展服务器地址", "确定");
+                    return;
+                }
+
+                const file = $("#edit-page-wasm-extension-source").files[0];
+                if (!file) {
+                    showDialog("提示", "请先选择源文件", "确定");
+                    return;
+                }
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    const resp = await fetch(`${server}/compile`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            source: e.target.result,
+                        }),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    });
+
+                    if (resp.status !== 200) {
+                        await showDialog("错误", `服务器返回了错误: ${resp.status}`, "确定");
+                        return;
+                    }
+
+                    const json = await resp.json();
+                    if (json.code != 0) {
+                        await showDialog("错误", `服务器返回了错误(${json.code}): ${json.error}`, "确定");
+                        return;
+                    }
+
+                    const b64wasm = json.data;
+                    const blob = new Blob([atob(b64wasm)], { type: "application/wasm" });
+                    config.enable_wasmext = true;
+                    config.wasmext = blob;
+                    await showDialog("提示", `成功\nwasm可执行文件大小: ${blob.size} bytes`, "确定");
+                    update();
+                }
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
+            };
+            
+            update();
         } else {
             PuginPageCallback.forEach((v, k) => {
                 if (name_match(k)) v(page, datas);
@@ -5004,6 +5936,54 @@ zip:
     const saveAsJson = () => {
         ChartUtils.optIdx();
         return JSON.stringify(config.chart, null, 4);
+    };
+
+    const saveAsZip = async () => {
+        const zip = new JSZip();
+        const meta = {
+            chart_file: "chart.json",
+            audio_file: `audio.${config.audioext}`,
+            image_file: "image.png"
+        };
+
+        if (config.wasmext.enabled) {
+            meta.chart_wasm = "ext.wasm";
+            zip.file(meta.chart_wasm, config.wasmext.raw)
+        }
+
+        let created_sbf = false;
+        let sbres_folder;
+        let nores_sb = [];
+        const saved_sbres = new Set();
+        for (const sb of config.chart.storyboards) {
+            if (sb.type !== MIL_CES.EnumStoryboardType.Picture) continue;
+            if (saved_sbres.has(sb.data)) continue;
+            if (!created_sbf) {
+                created_sbf = true;
+                sbres_folder = zip.folder("res");
+            }
+
+            // 谱师求你了别在名字里面加一堆稀奇古怪的字符让模拟器怎么活
+            if (sb.data in config.storyboard_res) {
+                sbres_folder.file(sb.data, im2png(config.storyboard_res[sb.data]));
+            } else {
+                nores_sb.push(sb.data);
+            }
+            saved_sbres.add(sb.data);
+        }
+
+        if (nores_sb.length) {
+            let msg = `未找到以下Storyboard资源:\n${nores_sb.join("\n")}\n\n但导出仍会继续`;
+            logger.warn(msg);
+            showDialog("提示", msg, "确定");
+        }
+
+        zip.file("chart.json", JSON.stringify(config.chart));
+        zip.file(`audio.${config.audioext}`, await fetch(config.audio.src).then(r => r.arrayBuffer()));
+        zip.file("image.png", im2png(config.illu));
+        zip.file("meta.json", JSON.stringify(meta));
+
+        return await zip.generateAsync({ type: "blob" });
     };
 
     const doExport = async () => {
@@ -5087,45 +6067,7 @@ zip:
 
             exportRes = statements.filter(x => !!x).join(";") + ";";
         } else if (exportType === "zip") {
-            const zip = new JSZip();
-            const meta = {
-                chart_file: "chart.json",
-                audio_file: `audio.${config.audioext}`,
-                image_file: "image.png"
-            };
-
-            let created_sbf = false;
-            let sbres_folder;
-            let nores_sb = [];
-            const saved_sbres = new Set();
-            for (const sb of config.chart.storyboards) {
-                if (sb.type !== MIL_CES.EnumStoryboardType.Picture) continue;
-                if (saved_sbres.has(sb.data)) continue;
-                if (!created_sbf) {
-                    created_sbf = true;
-                    sbres_folder = zip.folder("res");
-                }
-
-                // 谱师求你了别在名字里面加一堆稀奇古怪的字符让模拟器怎么活
-                if (sb.data in config.storyboard_res) {
-                    sbres_folder.file(sb.data, im2png(config.storyboard_res[sb.data]));
-                } else {
-                    nores_sb.push(sb.data);
-                }
-                saved_sbres.add(sb.data);
-            }
-
-            if (nores_sb.length) {
-                let msg = `未找到以下Storyboard资源:\n${nores_sb.join("\n")}\n\n但导出仍会继续`;
-                logger.warn(msg);
-                showDialog("提示", msg, "确定");
-            }
-
-            zip.file("chart.json", JSON.stringify(config.chart));
-            zip.file(`audio.${config.audioext}`, await fetch(config.audio.src).then(r => r.arrayBuffer()));
-            zip.file("image.png", im2png(config.illu));
-            zip.file("meta.json", JSON.stringify(meta));
-            exportRes = await zip.generateAsync({ type: "blob" });
+            exportRes = await saveAsZip();
         }
 
         logger.info(`导出为${exportType}`);
@@ -5612,7 +6554,8 @@ zip:
     add_res_selector($("#res-selectors"), "图片文件", [".png", ".jpg", ".jpeg", ".bmp"], "image");
     add_res_selector($("#res-selectors"), "谱面文件 (可选)", [".json"], "chart");
     add_res_selector($("#res-selectors"), "故事板资源 (可选)", null, "sbres", true);
-    add_res_getter($("#res-selectors"), "进入编辑器", ["audio", "image", "chart", "sbres"], launch_editor);
+    add_res_selector($("#res-selectors"), "可编程谱面扩展 (可选)", [".wasm"], "rs_wasmext");
+    add_res_getter($("#res-selectors"), "进入编辑器", ["audio", "image", "chart", "sbres", "rs_wasmext"], launch_editor);
 
     const edit_pages = [];
     const edit_pages_back_btns = [];
@@ -5699,12 +6642,14 @@ zip:
     var boxingNote = false;
     var boxNoteStart = [-1, -1];
     var boxNoteEnd = [-1, -1];
+    var boxNoteStartTime = -1;
     var boxingNoteIdxs = [];
     var boxingNoteMoving = false;
     var boxingNoteLastMove = [0, 0, 1];
     var boxingEvent = false;
     var boxEventStart = [-1, -1];
     var boxEventEnd = [-1, -1];
+    var boxEventStartTime = -1;
     var boxingEventIdxs = [];
     var boxingEventMoving = false;
     var boxingEventLastMove = [0, 0, 1];
@@ -5723,6 +6668,8 @@ zip:
     };
 
     $("#editor-on-preview-inner").addEventListener("mousedown", e => {
+        redraw = true;
+        
         if (e.button === 2 &&
             editing_note_lines_area[0] <= offsetX &&
             offsetX <= editing_note_lines_area[1] &&
@@ -5759,6 +6706,7 @@ zip:
                 offsetX <= editing_note_lines_area[3] &&
                 !e.ctrlKey && !boxingNote) {
                 config.audio.pause();
+                redraw = true;
 
                 if (ChartUtils.noteFromIdx(noteidx) === null) {
                     logger.info(`序号为 ${noteidx} 的 note 不存在, 为什么啊为什么啊为什么啊为什么啊`);
@@ -5789,6 +6737,7 @@ zip:
                 area[1] <= offsetY &&
                 offsetY <= area[3]) {
                 config.audio.pause();
+                redraw = true;
 
                 if (!boxingEventIdxs.includes(eidx)) {
                     clearEditingState(); // 不可以放到外面
@@ -5814,6 +6763,7 @@ zip:
             clearEditingState();
             boxingNote = true;
             boxNoteStart = boxNoteEnd = [offsetX, offsetY];
+            boxNoteStartTime = config.audio.currentTime;
             return;
         }
 
@@ -5823,6 +6773,7 @@ zip:
             clearEditingState();
             boxingEvent = true;
             boxEventStart = boxEventEnd = [offsetX, offsetY];
+            boxEventStartTime = config.audio.currentTime;
             return;
         }
 
@@ -5835,6 +6786,7 @@ zip:
                 const inpoly = py_light_utils_exports.pointInPolygon([...poly, poly[0]], [offsetX, offsetY]);
                 if (e.button === 0 && inpoly) {
                     config.audio.pause();
+                    redraw = true;
                     editing_note = idx;
                     into_edit_page($("#edit-page-note-edit"), {
                         noteidx: idx,
@@ -5895,10 +6847,12 @@ zip:
 
         if (boxingNote) {
             boxNoteEnd = [offsetX, offsetY];
+            redraw = true;
         }
 
         if (boxingEvent) {
             boxEventEnd = [offsetX, offsetY];
+            redraw = true;
         }
         
         if (boxingNoteMoving && e.button === 0) {
@@ -5935,6 +6889,8 @@ zip:
     });
 
     $("#editor-on-preview-inner").addEventListener("mouseup", e => {
+        redraw = true;
+
         if (e.button === 0) {
             selecting_note = null;
             selecting_event = null;
@@ -5948,6 +6904,8 @@ zip:
     var creating_note = null;
     var creating_event = null;
     window.addEventListener("keydown", e => {
+        redraw = true;
+
         if (e.repeat) return;
         if (isInputActive(e)) return;
         if (["q", "w"].includes(e.key) &&
@@ -6084,6 +7042,8 @@ zip:
     });
 
     window.addEventListener("keyup", e => {
+        redraw = true;
+
         if (e.key === "q") creating_note = null;
         if (creating_event !== null && ["q", "w", "e"].includes(e.key) && ["q", "w", "e"].indexOf(e.key) === creating_event.bearer_type) creating_event = null;
     });
@@ -6321,10 +7281,11 @@ zip:
 
     $("#back-home").style.display = "none";
     $("#save").style.display = "none";
+    $("#open-rain-player-unity").style.display = "none";
     $("#auto-backup-label").style.display = "none";
     $("#top-bar-auto-backup-checkbox").style.display = "none";
 
-    const loadEditor = async meta => { // webview 调的
+    const loadEditor = async (meta, settings) => { // webview 调的
         (async () => {
             let isTranslating = false;
             try { isTranslating = await pywebview.api.getIsTranslating(); }
@@ -6339,7 +7300,8 @@ zip:
             chart: await URL.createFileURL(meta.chartPath),
             audio: await URL.createFileURL(meta.audioPath),
             image: await URL.createFileURL(meta.imagePath),
-            sbres: {}
+            sbres: {},
+            raw_native_audio_path: meta.audioPath
         };
 
         const resFiles = await fetch(`/api/getFiles/${meta.sbresPath}`).then(r => r.json());
@@ -6351,6 +7313,7 @@ zip:
 
         $("#back-home").style.display = "inline-flex";
         $("#save").style.display = "inline-flex";
+        $("#open-rain-player-unity").style.display = "inline-flex";
         $("#auto-backup-label").style.display = "inline";
         $("#top-bar-auto-backup-checkbox").style.display = "inline";
         $("#top-bar-auto-backup-checkbox").checked = true;
@@ -6363,8 +7326,25 @@ zip:
             window.pywebview.api.doSave();
         });
 
+        if (settings.editor_bg) {
+            $("#renderer").style.backgroundImage = `url("${settings.editor_bg}")`;
+        }
+
         launch_editor();
     };
+
+    $("#open-rain-player-unity").addEventListener("click", async () => {
+        if (!window.pywebview || !(await pywebview.api.hasExtension("rain-player-unity"))) {
+            showDialog("提示", "请先安装 rain-player-unity 扩展", "确定");
+            return;
+        }
+
+        const chartZipBlob = await saveAsZip();
+        const chartZipArrayBuffer = await chartZipBlob.arrayBuffer();
+        const chartZipUInt8Array = new Uint8Array(chartZipArrayBuffer);
+        const chartZipTempUrl = await pywebview.api.createTempUrlFromString(Array.from(chartZipUInt8Array));
+        window.open(`./rain-editor-extensions/rain-player-unity/index.html?chartUrl=${chartZipTempUrl}`, "_blank");
+    });
 
     window.addEventListener("keydown", e => {
         if (isInputActive(e) || e.code !== "Delete" || e.repeat) return;
@@ -6460,7 +7440,9 @@ zip:
         this.clientHeight;
     }
 
-    const showDialog = (title, content, confirm_text, onclosed) => {
+    const showDialog = (title, content, confirm_text, onclosed, data) => {
+        data ||= {};
+
         let pm_resolve;
         const pm = new Promise(resolve => {
             pm_resolve = resolve;
@@ -6474,8 +7456,17 @@ zip:
         dlg.classList.add("mildialog-showing");
 
         dlg.querySelector(".mildialog-title").innerText = title;
-        dlg.querySelector(".mildialog-content").innerHTML = content.split("\n").map(l => l.length > 0 ? `<p>${l}</p>` : "<br>").join("");
+        data.set_content = content => {
+            dlg.querySelector(".mildialog-content").innerHTML = content.split("\n").map(l => l.length > 0 ? `<p>${l}</p>` : "<br>").join("");
+        };
+        data.set_content(content);
         dlg.querySelector(".mildialog-ok").innerText = confirm_text;
+        let disabled = false;
+
+        data.set_button_state = enable => {
+            disabled = !enable;
+            dlg.querySelector(".mildialog-ok").style.opacity = enable ? 1 : 0.7;
+        };
 
         dlg.style.translate = `0 ${(window.innerHeight - dlg.offsetTop) * animmovemult}px`;
         dlg.style.opacity = 0;
@@ -6488,6 +7479,7 @@ zip:
         });
 
         dlg.querySelector(".mildialog-ok").addEventListener("click", () => {
+            if (disabled) return;
             dlg.style.transition = `all ${animdur}s cubic-bezier(1, -0.5, 1, 1)`;
             dlg.style.translate = `0 ${(window.innerHeight - dlg.offsetTop) * animmovemult}px`;
             dlg.style.opacity = 0;
@@ -6509,4 +7501,8 @@ zip:
     };
 
     googleTranslateDialogDeleter();
+
+    if (navigator.onLine) {
+        $("#renderer").style.backgroundImage = 'url("https://milthm.com/img/bg/v2/day/bg_day.avif")';
+    }
 </script>
