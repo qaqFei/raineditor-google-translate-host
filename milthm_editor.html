@@ -757,6 +757,7 @@ zip:
 
     仅支持 json 格式, 请不要导入 zip, pez, pec 。
 `,
+<<<<<<< HEAD
     "help-picksound-export-ai": `\
     使用本地的 AI 模型进行采音。
     需要扩展: ai-picksound
@@ -1090,6 +1091,8 @@ zip:
     "help-event-[2,23]": `\
     故事板的可见区域事件, 无行为。
 `,
+=======
+>>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
         }[key];
     };
 
@@ -5525,6 +5528,7 @@ zip:
                 包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-drag" checked> <br>
                 <button class="milbtn" onclick="importPicksoundFromPhigrosRPE()" style="margin-top: 4px;">生成</button>
                 <br><br>
+<<<<<<< HEAD
 
                 <span>使用 AI 采音</span>
                 <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音', getHelpText('help-picksound-export-ai'), '确定')" style="display: inline-flex;" small></div>
@@ -5546,6 +5550,8 @@ zip:
                 <input type="number" id="edit-page-picksound-tool-import-ai-hop-sec" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="0.5" step="0.05">
                 <button class="milbtn" onclick="importPicksoundFromAI()" style="margin-top: 4px;">生成</button>
                 <br><br>
+=======
+>>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
             `;
 
             const _makeBinaryStreamFromPicksoundData = dataArr => {
@@ -5768,6 +5774,7 @@ zip:
                 freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
                 freader.readAsText(file);
             };
+<<<<<<< HEAD
         
             const AIInferThreshold = $("#edit-page-picksound-tool-import-ai-infer-threshold");
             AIInferThreshold.addEventListener("change", () => {
@@ -5910,6 +5917,8 @@ zip:
             };
             
             update();
+=======
+>>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
         } else {
             PuginPageCallback.forEach((v, k) => {
                 if (name_match(k)) v(page, datas);
