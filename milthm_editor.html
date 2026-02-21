@@ -1,6 +1,6 @@
 <head>
     <link rel="icon" href="./resources/milres/editor_icon.ico">
-    <title>Rain Editor v0.0.2</title>
+    <title>Rain Editor v0.0.3-dev2</title>
     <link rel="stylesheet" type="text/css" href="./css/scrollbar.css">
 </head>
 
@@ -22,6 +22,7 @@
                         <div id="premake-anim">预制动画</div>
                         <div id="picksound-tool">采音工具</div>
                         <div id="wasm-extension">可编程谱面扩展</div>
+                        <div id="other">其他</div>
                     </div>
                 </div>
             </div>
@@ -57,6 +58,11 @@
                 <br>
                 <span>全局note缩放: </span> <input id="top-bar-global-note-scale" type="number" class="milbtn" style="display: inline-flex;" value="1.0" stpe="0.1"></input>
                 <span>轨道编辑密度: </span> <input id="top-bar-track-edit-lw" type="number" class="milbtn" style="display: inline-flex;" value="1.0" stpe="0.1"></input>
+                <button class="milbtn" style="display: inline-flex;" onclick="preEvaluateCusExpEvents()" onfocus="this.blur()">预计算自定义表达式事件</button>
+                <div class="help-btn" onclick="showDialog('帮助-预计算自定义表达式事件', getHelpText('help-pre-evaluate-cusexp-events'), '确定')" style="display: inline-flex;" small></div>
+                <span>显示所有隐藏的线(对象): </span> <input class="milbtn" style="display: inline-flex;" type="checkbox" id="top-bar-show-all-hidden-lines">
+                <div class="help-btn" onclick="showDialog('帮助-显示所有隐藏的线(对象)', getHelpText('help-show-all-hidden-lines'), '确定')" style="display: inline-flex;" small></div>
+                <span>不再显示删除提示框</span> <input id="top-bar-dont-show-delete-dialog" type="checkbox" class="milbtn" style="display: inline-flex;">
                 <br> <br>
 
                 <div id="top-bar-editing-event-type-selector" style="width: 25%; height: 50%; overflow: auto; display: inline-block;" class="milbtn">
@@ -80,6 +86,10 @@
                     <span>事件类型: </span> <select id="top-bar-editing-new-event-data-type-selector" class="milbtn" style="display: inline-flex;">
 
                     </select>
+                    <div id="new-event-data-no-visible-warning">
+                        <span style="color: rgb(255, 136, 0);">Warning: 当前事件类型放置后将在编辑器中不可视</span>
+                        <div class="help-btn" onclick="showDialog('帮助', getHelpText('help-new-event-not-visible'), '确定')" style="display: inline-flex;" small></div>
+                    </div>
                 </div>
             </div>
 
@@ -87,6 +97,7 @@
                 <button id="back-home" class="milbtn" style="display: inline-flex;">回到首页</button>
                 <button id="save" class="milbtn" style="display: inline-flex;">保存</button>
                 <button id="open-rain-player-unity" class="milbtn" style="display: inline-flex;">从 Rain Player Unity 打开</button>
+                <button id="open-random-window" class="milbtn" style="display: inline-flex;">给我一个窗口</button>
             </div>
 
             <!-- edit-page 开头的 div 的 id 命名遵循 f"edit-page-{进入这个page的按钮的id}" -->
@@ -174,6 +185,22 @@
             <div id="edit-page-wasm-extension">
                 <div id="edit-page-back-container"></div>
                 <div id="edit-page-wasm-extension-main"></div>
+            </div>
+
+            <div id="edit-page-other">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-other-main">
+                    <button id="history-auto-backups-into-button" onclick="into_edit_page($('#edit-page-history-auto-backups'))">历史自动备份</button>
+                </div>
+            </div>
+
+            <div id="edit-page-history-auto-backups">
+                <div id="edit-page-back-container"></div>
+                <div id="edit-page-history-auto-backups-main"></div>
+                <div id="edit-page-history-auto-backups-footer">
+                    <div id="edit-page-history-auto-backups-footer-delete-some" class="milbtn" onclick="deleteSomeAutoBackup()" style="display: inline-flex; width: 40%;"></div>
+                    <div id="edit-page-history-auto-backups-footer-delete-all" class="milbtn" onclick="deleteAllAutoBackup()" style="display: inline-flex;">删除所有备份</div>
+                </div>
             </div>
         </div>
     </div>
@@ -391,7 +418,9 @@
     #edit-page-sb-edit-footer-add-sb,
     #edit-page-script-run-footer-run,
     #edit-page-batch-note-edit-footer-apply,
-    #edit-page-batch-event-edit-footer-apply {
+    #edit-page-batch-event-edit-footer-apply,
+    #edit-page-history-auto-backups-footer-delete-some,
+    #edit-page-history-auto-backups-footer-delete-all {
         width: 30%;
         height: 80%;
     }
@@ -663,6 +692,7 @@
     var onDelete = () => {};
     var doCopyEditing = () => {};
     var doPasteEditing = () => {};
+    var onUpdateWhenChartChanged = () => {};
     var copyEditingData = null;
     var msgs = [];
     var disableDeleteWarn = false;
@@ -753,11 +783,17 @@ zip:
     你可以使用 Phigros 官方格式谱面文件生成 .milpicksound 采音文件。
 `,
     "help-picksound-export-phigros-rpe": `\
+    (导入采音)
     你可以使用 Re:PhiEdit 或其他使用 RPE 格式生成的 Phigros 自制谱面文件。
 
     仅支持 json 格式, 请不要导入 zip, pez, pec 。
 `,
-<<<<<<< HEAD
+    "help-bpmlist-export-phigros-rpe": `\
+    (导入BPM列表)
+    你可以使用 Re:PhiEdit 或其他使用 RPE 格式生成的 Phigros 自制谱面文件。
+
+    仅支持 json 格式, 请不要导入 zip, pez, pec 。
+`,
     "help-picksound-export-ai": `\
     使用本地的 AI 模型进行采音。
     需要扩展: ai-picksound
@@ -1091,8 +1127,15 @@ zip:
     "help-event-[2,23]": `\
     故事板的可见区域事件, 无行为。
 `,
-=======
->>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
+    "help-pre-evaluate-cusexp-events": `\
+    预计算所有缓动为自定义表达式的事件的开始与结束值。
+`,
+    "help-new-event-not-visible": `\
+    当前选择的事件类型或归属对象在编辑事件过滤中被过滤, 所以不可见, 事件还是可以正常编辑/生效。
+`,
+    "help-show-all-hidden-lines": `\
+    忽略透明度显示所有的线(对象)。
+`,
         }[key];
     };
 
@@ -1930,8 +1973,8 @@ zip:
                         {
                             startTime: [0, 0, 1],
                             endTime: [1, 0, 1],
-                            start: 0,
-                            end: 0,
+                            start: -500,
+                            end: -500,
                             type: MIL_CES.EnumAnimationType.PositionX,
                             ease: {
                                 type: 0,
@@ -1940,6 +1983,21 @@ zip:
                                 cusValueExp: "",
                                 clipLeft: 0.0,
                                 clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [0, 1, 4],
+                            type: 5,
+                            start: 8,
+                            end: 8,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0
                             }
                         }
                     ]
@@ -1992,6 +2050,21 @@ zip:
                                 clipLeft: 0.0,
                                 clipRight: 1.0,
                             }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [0, 1, 4],
+                            type: 5,
+                            start: 8,
+                            end: 8,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0
+                            }
                         }
                     ]
                 },
@@ -2032,8 +2105,8 @@ zip:
                         {
                             startTime: [0, 0, 1],
                             endTime: [1, 0, 1],
-                            start: -500,
-                            end: -500,
+                            start: 0,
+                            end: 0,
                             type: MIL_CES.EnumAnimationType.PositionX,
                             ease: {
                                 type: 0,
@@ -2042,6 +2115,21 @@ zip:
                                 cusValueExp: "",
                                 clipLeft: 0.0,
                                 clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [0, 1, 4],
+                            type: 5,
+                            start: 8,
+                            end: 8,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0
                             }
                         }
                     ]
@@ -2094,6 +2182,21 @@ zip:
                                 clipLeft: 0.0,
                                 clipRight: 1.0,
                             }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [0, 1, 4],
+                            type: 5,
+                            start: 8,
+                            end: 8,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0
+                            }
                         }
                     ]
                 },
@@ -2144,6 +2247,21 @@ zip:
                                 cusValueExp: "",
                                 clipLeft: 0.0,
                                 clipRight: 1.0,
+                            }
+                        },
+                        {
+                            startTime: [0, 0, 1],
+                            endTime: [0, 1, 4],
+                            type: 5,
+                            start: 8,
+                            end: 8,
+                            ease: {
+                                type: 0,
+                                press: 0,
+                                isValueExp: false,
+                                cusValueExp: "",
+                                clipLeft: 0.0,
+                                clipRight: 1.0
                             }
                         }
                     ]
@@ -2388,6 +2506,7 @@ zip:
 
     const onchartchanged = msg => {
         redraw = true;
+        onUpdateWhenChartChanged();
 
         for (const e of ChartUtils.getAllAnimations()) {
             if (e.endTime.value < e.startTime.value) e.startTime = e.endTime;
@@ -2414,6 +2533,12 @@ zip:
     };
 
     window.addEventListener("keydown", e => {
+        if (!isInputActive(e) && ["z", "y"].includes(e.key) && e.ctrlKey) {
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener("keydown", e => {
         if (history_charts.length === 0) return;
         if (e.key !== "z" || !e.ctrlKey || e.repeat) return;
         if (currhistoryi - 1 < 0) return;
@@ -2435,7 +2560,7 @@ zip:
         if (e.key !== "y" || !e.ctrlKey || e.repeat) return;
         if (currhistoryi + 1 >= history_charts.length) return;
         if (isInputActive(e)) return;
-
+        
         const backup = history_charts[++currhistoryi].deepcopy();
         for (const k in backup) {
             config.chart[k] = backup[k];
@@ -2584,6 +2709,24 @@ zip:
             await showDialog("提示", "加载 wasm 扩展失败", "确定");
         }
     };
+
+    const match_editing_event = (x, ignore_bearer_type) => (
+        config.chart.editor.editing.event_type.includes(x.type) &&
+        (config.chart.editor.editing.event_edit_filter.bearer_type.includes(x.bearer_type) || ignore_bearer_type) &&
+        (config.chart.editor.editing.event_edit_filter.bearer.length === 0 ||
+         config.chart.editor.editing.event_edit_filter.bearer.reduce((acc, condition) => {
+            let val;
+            condition = condition.replaceAll(" ", "");
+            if (condition === "*") val = true;
+            else if (condition.includes("..")) {
+                let [start, end] = condition.split("..");
+                if (!start) start = "-1";
+                if (!end) end = "999999999";
+                val = parseInt(start) <= x.bearer && x.bearer <= parseInt(end);
+            } else val = parseInt(condition) === x.bearer;
+            return val || acc;
+         }, false))
+    );
 
     const launch_editor = async () => {
         config = $("#res-selectors").getres();
@@ -2932,6 +3075,8 @@ zip:
                     config.chart.editor.editing.event_type = config.chart.editor.editing.event_type.filter(v => v !== i);
                 }
                 editing_events_track_map.clear();
+                redraw = true;
+                updateNewEventDataNoVisibleWarning();
             };
             eventTypeSelectorCheckboxs.push(checkbox);
             $("#top-bar-editing-event-type-selector").appendChild(checkbox);
@@ -2967,6 +3112,7 @@ zip:
                     config.chart.editor.editing.event_edit_filter.bearer_type = config.chart.editor.editing.event_edit_filter.bearer_type.filter(v => v !== i);
                 }
                 editing_events_track_map.clear();
+                redraw = true;
             };
             eventFilterSelector.appendChild(checkbox);
             eventFilterSelector.appendChild(label);
@@ -2986,8 +3132,14 @@ zip:
         eventFilterSelectorBearerInput.onchange = () => {
             config.chart.editor.editing.event_edit_filter.bearer = eventFilterSelectorBearerInput.value.split("\n");
             editing_events_track_map.clear();
+            redraw = true;
+            updateNewEventDataNoVisibleWarning();
         };
         eventFilterSelector.appendChild(eventFilterSelectorBearerInput);
+
+        const updateNewEventDataNoVisibleWarning = () => {
+            $("#new-event-data-no-visible-warning").style.display = match_editing_event(config.chart.editor.editing.new_event, true) ? "none" : "flex";
+        };
 
         const onupdate_editing_new_event_data = () => {
             $("#top-bar-editing-new-event-data-type-selector").innerHTML = `
@@ -3020,6 +3172,7 @@ zip:
                 if (o.value === config.chart.editor.editing.new_event.bearer_type) o.setAttribute("selected", "selected");
             });
             $("#top-bar-editing-new-event-data-bearer-inputer").value = config.chart.editor.editing.new_event.bearer;
+            updateNewEventDataNoVisibleWarning();
         };
 
         onupdate_editing_new_event_data();
@@ -3073,11 +3226,21 @@ zip:
         $("#res-selectors").style.opacity = "1.0";
         $("#res-selectors").clientWidth; // force reflow
         $("#res-selectors").style.opacity = "0.0";
-        $("#res-selectors").ontransitionend = () => $("#res-selectors").style.display = "none"
+        $("#res-selectors").ontransitionend = () => $("#res-selectors").style.display = "none";
 
         $("#top-bar-playback-speed-inputer").onchange = () => {
             config.audio.playbackRate = parseFloat($("#top-bar-playback-speed-inputer").value);
         };
+
+        $("#top-bar-show-all-hidden-lines").checked = config.chart.editor.show_all_hidden_lines;
+        $("#top-bar-show-all-hidden-lines").onchange = () => {
+            config.chart.editor.show_all_hidden_lines = $("#top-bar-show-all-hidden-lines").checked;
+            redraw = true;
+        };
+
+        $("#top-bar-dont-show-delete-dialog").onchange = () => {
+            disableDeleteWarn = $("#top-bar-dont-show-delete-dialog").checked;
+        }
     };
 
     const get_difficulty_fn = () => {
@@ -3111,7 +3274,11 @@ zip:
         }
     };
 
-    const fmtBeatStr = b => `${Math.floor(b)}:${Math.floor(b % 1.0 * config.eop.beat_spilt)}/${config.eop.beat_spilt}`;
+    const fmtBeatStr = b => {
+        let rem = b % 1.0;
+        if (rem < 0) rem += 1.0;
+        return `${Math.floor(b)}:${Math.floor(rem * config.eop.beat_spilt)}/${config.eop.beat_spilt}`;
+    };
     var editing_note_lines_area = [0, 0, 0, 0];
     var editing_note_lines_remove_areas = [];
     var editing_note_lines_note_areas = [];
@@ -3132,10 +3299,12 @@ zip:
     var now_t = 0.0;
     var last_now_t = -1.0;
     var redraw = true;
+    const ENABLE_MSG_SHOW = false;
 
     const render = () => {
         now_t = config.audio.currentTime - config.chart.meta.offset;
         redraw ||= now_t !== last_now_t;
+        redraw ||= ENABLE_MSG_SHOW && msgs.length;
         last_now_t = now_t;
 
         if (!redraw) {
@@ -3684,7 +3853,7 @@ zip:
             const ah = chart_render_area * h;
 
             if (config.chart.editor.editing.auto_sort_byx) {
-                config.chart.editor.editing.note.sortbykey(l => lines_pos.get(l)[0]);
+                config.chart.editor.editing.note.sortbykey(l => (lines_pos.get(l) ?? [0, 0])[0]);
             }
 
             epr.clear();
@@ -3734,7 +3903,7 @@ zip:
                     if (i % config.eop.beat_spilt === 0) {
                         drawBeatText(
                             curr_draw_beat,
-                            `${Math.floor(curr_draw_beat)}`,
+                            `${Math.round(curr_draw_beat)}`,
                             "rgba(255, 255, 255, 0.95)", "rgba(0, 0, 0, 0.8)",
                             aw * 0.025, 0.7
                         );
@@ -3973,23 +4142,7 @@ zip:
                     const editing_events = [];
                     const all_events = [];
                     const push_events = es => {
-                        es = es.filter(x => (
-                            config.chart.editor.editing.event_type.includes(x.type) &&
-                            config.chart.editor.editing.event_edit_filter.bearer_type.includes(x.bearer_type) &&
-                            (config.chart.editor.editing.event_edit_filter.bearer.length === 0 ||
-                             config.chart.editor.editing.event_edit_filter.bearer.reduce((acc, condition) => {
-                                let val;
-                                condition = condition.replaceAll(" ", "");
-                                if (condition === "*") val = true;
-                                else if (condition.includes("..")) {
-                                    let [start, end] = condition.split("..");
-                                    if (!start) start = "-1";
-                                    if (!end) end = "999999999";
-                                    val = parseInt(start) <= x.bearer && x.bearer <= parseInt(end);
-                                } else val = parseInt(condition) === x.bearer;
-                                return val || acc;
-                             }, false))
-                        ));
+                        es = es.filter(x => match_editing_event(x));
                         editing_events.push(...es.filter(x => (
                             (() => {
                                 const [sy, ey] = [gety(x.startTime.value), gety(x.endTime.value)].sorted();
@@ -4070,8 +4223,6 @@ zip:
                             const textpady = ah / 15;
                             const texty = Math.max(Math.min((sy + ey) / 2, ah - textpady), textpady);
 
-                            epr.save();
-                            if (e.index === editing_event || boxingEventIdxs.includes(e.index)) applyCtxColorFilter(epr, 0.0, 1.0, 0.0);
                             try {
                                 epr.drawGrd(
                                     [0.0, sy, 0.0, ey],
@@ -4081,8 +4232,16 @@ zip:
                                     ],
                                     ...rect
                                 );
+
+                                if (e.index === editing_event || boxingEventIdxs.includes(e.index)) {
+                                    epr.fillRectEx(
+                                        rect[0], rect[1],
+                                        rect[2] - rect[0],
+                                        rect[3] - rect[1],
+                                        "rgba(0, 255, 0, 0.5)"
+                                    );
+                                }
                             } catch (e) {}
-                            epr.restore();
 
                             epr.save();
                             epr.beginPath();
@@ -4161,30 +4320,57 @@ zip:
             "red", "left", "top"
         );
 
-        // mctx.clear();
-        // mctx.font = `${(w + h) / 105}px milFont`;
+        if (isCtrlKeyPressing) {
+            const drawctx = display_eop ? epr : ctx;
+            drawctx.save();
+            drawctx.translate(0, display_eop ? 0 : h * (1 - chart_render_area));
+            const chartpos = [
+                (offsetX / (w * chart_render_area) - 0.5) * MIL_SCRSIZE[0],
+                -(offsetY / (h * chart_render_area) - 0.5) * MIL_SCRSIZE[1]
+            ];
+            drawctx.font = `${(w + h) / 125}px milFont`;
+            drawctx.fillStyle = "black";
+            drawctx.textAlign = "left";
+            drawctx.textBaseline = "bottom";
+            const text = `${parseInt(chartpos[0])},${parseInt(chartpos[1])}`;
+            const textsize = drawctx.getTextSizeWithoutFont(text);
+            const rect = [
+                offsetX, offsetY - textsize[1],
+                ...textsize
+            ];
+            drawctx.fillRectEx(...rect, "white");
+            drawctx.fillText(text, offsetX, offsetY);
+            drawctx.restore();
+        }
+
+        if (ENABLE_MSG_SHOW) {
+            mctx.clear();
+            mctx.font = `${(w + h) / 105}px milFont`;
+        }
         const msg_dur = 1.5;
         msgs = msgs.filter(x => performance.now() - x.time <= msg_dur * 1000);
-        // const msg_padding = h / 300;
-        // for (const msg of msgs) {
-        //     const textSize = mctx.getTextSize(msg.msg, mctx.font);
-        //     const p = (performance.now() - msg.time) / 1000 / msg_dur;
-        //     const rect = [
-        //         w - (msg_padding * 3 + textSize[0]) * (1.0 - (1.0 - Utils.fixorp(p * 1.5)) ** 5),
-        //         msg.y, textSize[0] + msg_padding * 2,
-        //         h / 20
-        //     ];
+        if (ENABLE_MSG_SHOW) {
+            const msg_padding = h / 300;
+            for (const msg of msgs) {
+                const textSize = mctx.getTextSize(msg.msg, mctx.font);
+                const p = (performance.now() - msg.time) / 1000 / msg_dur;
+                const rect = [
+                    w - (msg_padding * 3 + textSize[0]) * (1.0 - (1.0 - Utils.fixorp(p * 1.5)) ** 5),
+                    msg.y, textSize[0] + msg_padding * 2,
+                    h / 20
+                ];
 
-        //     mctx.globalAlpha = (p < 0.8 ? 1.0 : (1.0 - (p - 0.8) / 0.2)) * 0.6;
-        //     mctx.roundRectEx(...rect, rect[3] / 4, "rgba(255, 255, 255, 0.9)");
-        //     mctx.drawTextEx(
-        //         msg.msg,
-        //         rect[0] + msg_padding,
-        //         msg.y + h / 20 / 2,
-        //         mctx.font,
-        //         "rgba(32, 32, 32, 0.9)", "left", "middle"
-        //     );
-        // }
+                mctx.globalAlpha = (p < 0.8 ? 1.0 : (1.0 - (p - 0.8) / 0.2)) * 0.6;
+                mctx.roundRectEx(...rect, rect[3] / 8, "rgba(255, 255, 255, 0.9)");
+                mctx.drawTextEx(
+                    msg.msg,
+                    rect[0] + msg_padding,
+                    msg.y + h / 20 / 2,
+                    mctx.font,
+                    "rgba(32, 32, 32, 0.9)", "left", "middle"
+                );
+            }
+        }
 
         requestAnimationFrame(render);
     };
@@ -4196,7 +4382,7 @@ zip:
     };
 
     const parseBeatStr = s => {
-        if (/^\d*:\d*\/\d*$/.test(s)) {
+        if (/^(-?\d+):(-?\d+)\/(-?\d+)$/.test(s)) {
             let [block, c] = s.split("/");
             let [a, b] = block.split(":");
             a = parseInt(a);
@@ -4208,7 +4394,7 @@ zip:
                 a += 1;
             }
 
-            if (a >= 0 && b >= 0 && c !== 0) {
+            if (b >= 0 && c !== 0) {
                 return [a, b, c];
             }
         } else {
@@ -4222,12 +4408,14 @@ zip:
 
     var editing_note = -1;
     var editing_event = -1;
+    var currentEditPage = null;
     const opening_edit_page = new Set();
-    const into_edit_page = (page, datas) => {
+    const into_edit_page = async (page, datas) => {
         opening_edit_page.forEach(p => p.style.display = "none");
         opening_edit_page.clear();
         opening_edit_page.add(page);
         const name_match = name => page.id === `edit-page-${name}`;
+        currentEditPage = page;
 
         page.style.display = "block";
         $("#rb-buttons").style.display = "none";
@@ -4241,6 +4429,8 @@ zip:
             opening_edit_page.delete(page);
             onDelete = () => {};
             doCopyEditing = () => {};
+            onUpdateWhenChartChanged = () => {};
+            currentEditPage = null;
         }, { once: true });
 
         if (name_match("bpm-edit")) {
@@ -4258,6 +4448,8 @@ zip:
                 page.querySelectorAll("#edit-page-bpm-edit-item-time").forEach(e => e.addEventListener("change", onchange));
                 page.querySelectorAll("#edit-page-bpm-edit-item-bpm").forEach(e => e.addEventListener("change", onchange));
             };
+
+            window.onUpdateWhenChartChanged = onupdate;
 
             const onchange = () => {
                 const bpm_edit_items = page.querySelectorAll("#edit-page-bpm-edit-item");
@@ -4394,6 +4586,8 @@ zip:
                 page.querySelector("#edit-page-note-edit-item-delete").addEventListener("click", onDelete);
             };
 
+            window.onUpdateWhenChartChanged = onupdate;
+
             const onchange = () => {
                 const new_data = {
                     time: parseBeatStr(page.querySelector("#edit-page-bpm-note-item-time").value),
@@ -4476,7 +4670,8 @@ zip:
                     <span>序号: </span> <input id="edit-page-event-edit-item-index" value="${escapeHtml(e.index)}" class="input-style1" disabled> <br>
                     <span>开始时间: </span> <input id="edit-page-event-edit-item-startTime" value="${e.startTime.beatstr}" class="input-style1"> <br>
                     <span>结束时间: </span> <input id="edit-page-event-edit-item-endTime" value="${e.endTime.beatstr}" class="input-style1"> <br>
-                    <span>开始值: </span> <input id="edit-page-event-edit-item-start" value="${escapeHtml(e.type === MIL_CES.EnumAnimationType.Color ? Utils.ff_int2rgba(e.start).join(",") : e.start)}" class="input-style1"> <br>
+                    <span>开始值: </span> <input id="edit-page-event-edit-item-start" value="${escapeHtml(e.type === MIL_CES.EnumAnimationType.Color ? Utils.ff_int2rgba(e.start).join(",") : e.start)}" class="input-style1">
+                    <button id="edit-page-event-edit-item-swap-value" class="milbtn" style="display: inline-flex;">交换</button> <br>
                     <span>结束值: </span> <input id="edit-page-event-edit-item-end" value="${escapeHtml(e.type === MIL_CES.EnumAnimationType.Color ? Utils.ff_int2rgba(e.end).join(",") : e.end)}" class="input-style1"> <br>
                     <span>归属对象类型: </span> <select id="edit-page-event-edit-item-bearer-type" class="input-style1">
                         <option value="0"${e.bearer_type === 0 ? " selected" : ""}>${MIL_CES.EnumAnimationBearerTypeTextLong[0]}</option>
@@ -4599,6 +4794,15 @@ zip:
                     logger.info(`复制了序号为 ${datas.eidx} 的event到 ${target_lines.join(",")}`);
                     onchartchanged(`复制了序号为 ${datas.eidx} 的event到 ${target_lines.join(",")}`);
                 });
+                
+                page.querySelector("#edit-page-event-edit-item-swap-value").addEventListener("click", () => {
+                    const e = ChartUtils.eventFromIdx(datas.eidx);
+                    [e.start, e.end] = [e.end, e.start];
+                    onupdate();
+                    logger.info(`交换了序号为 ${datas.eidx} 的事件开始结束值`);
+                    onchartchanged(`交换了序号为 ${datas.eidx} 的事件开始结束值`);
+
+                });
 
                 onDelete = () => {
                     if (disableDeleteWarn || confirm(`确定要删除序号为${datas.eidx}的event吗?${spwan_delete_warn("event")}`)) {
@@ -4708,6 +4912,8 @@ zip:
                 drawLine(p => p, p => (e.start !== e.end ? (e.ease.doease(p, e.start, e.end) - e.start) / (e.end - e.start) : e.ease.doease(p, 0, 1)));
             };
 
+            onUpdateWhenChartChanged = onupdate;
+
             const onchange = () => {
                 const raw_e = ChartUtils.eventFromIdx(datas.eidx);
                 const raw_bearer_data = {
@@ -4811,8 +5017,10 @@ zip:
                 }).join("");
             };
 
+            window.onUpdateWhenChartChanged = onupdate;
+
             const onchange = () => {
-                // TODO
+                
             };
 
             onupdate();
@@ -4857,7 +5065,7 @@ zip:
                             <span>类型: </span> <select id="edit-page-sb-edit-item-type-select" class="milbtn" style="display: inline-flex;">
                                 <option value="0"${sb.type === 0 ? " selected" : ""}>${MIL_CES.EnumStoryboardTypeName[0]}</option>
                                 <option value="1"${sb.type === 1 ? " selected" : ""}>${MIL_CES.EnumStoryboardTypeName[1]}</option>
-                                <option value="2"${sb.type === 2 ? " selected" : ""}>${MIL_CES.EnumStoryboardTypeName[2]}</option>
+                                <!-- <option value="2"${sb.type === 2 ? " selected" : ""}>${MIL_CES.EnumStoryboardTypeName[2]}</option> -->
                             </select>${sb.type === 0 && !(sb.data in config.storyboard_res) ? `
                                 <span style="color: red; font-family: milFontBold"> !未找到资源</span>
                             ` : ""}
@@ -4897,7 +5105,8 @@ zip:
                     }
                 }
             };
-
+            
+            window.onUpdateWhenChartChanged = onupdate;
             onupdate();
 
             window.removeSB = idx => {
@@ -4920,7 +5129,7 @@ zip:
                 config.chart.storyboards.push({
                     type: 0,
                     data: "builtin.line",
-                    layer: 0,
+                    layer: 1,
                     animations: [],
                     index: ChartUtils.nextSbIdx(),
                 });
@@ -5195,7 +5404,7 @@ zip:
                     end: ["set", "add", "sub", "mul", "div"],
                     type: ["set"],
                     bearer_type: ["set"],
-                    bearer: ["set"],
+                    bearer: ["set", "add", "sub"],
                     "ease.type": ["set"],
                     "ease.press": ["set"],
                     "ease.isValueExp": ["set", "not", "xor"],
@@ -5226,7 +5435,7 @@ zip:
                     }, input_type: "number", default: 0 },
                     bearer: { type: "input", transformer: x => {
                         x = parseInt(x);
-                        if (isNaN(x) || 0 < x) return null;
+                        if (isNaN(x) || x < 0) return null;
                         return x;
                     }, input_type: "number", default: 0 },
                     "ease.type": { type: "select", data: Array.from( {length: 3} ).fill(0).map((_, i) => [i, MIL_CES.EnumEaseTypeText[i]]) },
@@ -5300,6 +5509,18 @@ zip:
                     if (isNaN(changed) || !isFinite(changed)) event[prop] = raw_value;
                 };
 
+                const applyBearerProp = (event, prop, value, mode) => {
+                    value = parseInt(value);
+                    const raw_value = event[prop];
+
+                    if (mode === "set") event[prop] = value;
+                    else if (mode === "add") event[prop] = event[prop] + value;
+                    else if (mode === "sub") event[prop] = event[prop] - value;
+
+                    const changed = parseInt(event[prop]);
+                    if (isNaN(changed) || !isFinite(changed) || !ChartUtils.objFromBearerData(event)) event[prop] = raw_value;
+                };
+
                 window.applyBatchEditEvent = () => {
                     let value = value_container.querySelector("#edit-page-batch-event-edit-value-input").value;
                     if (value_input.transformer) value = value_input.transformer(value);
@@ -5331,7 +5552,7 @@ zip:
                         } else if (property === "bearer_type") {
                             e.bearer_type = parseInt(value);
                         } else if (property === "bearer") {
-                            e.bearer = parseInt(value);
+                            applyBearerProp(e, property, value, mode);
                         } else if (property === "ease.type") {
                             e.ease.type = parseInt(value);
                         } else if (property === "ease.press") {
@@ -5353,10 +5574,15 @@ zip:
                             applyValueProp(e, "end", value, mode);
                         }
 
-                        const newObj = ChartUtils.objFromBearerData(e);
-                        if (newObj === null) {
+                        const new_bearer = ChartUtils.objFromBearerData(e);
+                        if (new_bearer === null) {
                             e.bearer_type = raw_bearer_data.bearer_type;
                             e.bearer = raw_bearer_data.bearer;
+                        } else {
+                            const raw_bearer = ChartUtils.objFromBearerData(raw_bearer_data);
+                            raw_bearer.animations = raw_bearer.animations.filter(i => i.index !== e.index);
+                            new_bearer.animations.push(e);
+                            new_bearer.animations.sortbykey(x => x.startTime.value);
                         }
                     };
                     
@@ -5528,7 +5754,13 @@ zip:
                 包含drag: <input type="checkbox" id="edit-page-picksound-tool-import-phigros-rpe-include-drag" checked> <br>
                 <button class="milbtn" onclick="importPicksoundFromPhigrosRPE()" style="margin-top: 4px;">生成</button>
                 <br><br>
-<<<<<<< HEAD
+
+                <span>从 Phigros 自制谱导入 BPM 列表</span>
+                <div class="help-btn" onclick="showDialog('帮助-从 Phigros 自制谱导入 BPM 列表', getHelpText('help-bpmlist-export-phigros-rpe'), '确定')" style="display: inline-flex;" small></div>
+                <br>
+                <input type="file" id="edit-page-picksound-tool-import-phigros-rpe-file-to-bpm-list" accept=".json" class="milbtn" style="margin-top: 4px; display: inline-flex;"> <br>
+                <button class="milbtn" onclick="importBPMListFromPhigrosRPE()" style="margin-top: 4px;">生成</button>
+                <br><br>
 
                 <span>使用 AI 采音</span>
                 <div class="help-btn" onclick="showDialog('帮助-使用 AI 采音', getHelpText('help-picksound-export-ai'), '确定')" style="display: inline-flex;" small></div>
@@ -5550,8 +5782,6 @@ zip:
                 <input type="number" id="edit-page-picksound-tool-import-ai-hop-sec" class="milbtn" style="margin-top: 4px; display: inline-flex;" value="0.5" step="0.05">
                 <button class="milbtn" onclick="importPicksoundFromAI()" style="margin-top: 4px;">生成</button>
                 <br><br>
-=======
->>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
             `;
 
             const _makeBinaryStreamFromPicksoundData = dataArr => {
@@ -5639,7 +5869,7 @@ zip:
 
                     for (let i = 0; i < count; i++) {
                         const time = stream.readDouble();
-                        const beat = ChartUtils.sec2beat(time).tobeat;
+                        const beat = ChartUtils.sec2beat(time + config.chart.meta.offset).tobeat;
                         const note = {
                             time: beat,
                             endTime: beat,
@@ -5774,7 +6004,41 @@ zip:
                 freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
                 freader.readAsText(file);
             };
-<<<<<<< HEAD
+
+            window.importBPMListFromPhigrosRPE = () => {
+                const file = $("#edit-page-picksound-tool-import-phigros-rpe-file-to-bpm-list").files[0];
+                if (!file) {
+                    showDialog("提示", "未选择文件", "确定");
+                    return;
+                }
+
+                const freader = new FileReader();
+                freader.onload = async e => {
+                    try {
+                        const parsedJson = JSON.parse(e.target.result);
+                        const bpms = parsedJson.BPMList;
+                        if (!bpms.length) throw new Error("谱面中没有 BPM 列表");
+                        config.chart.bpms.length = 0;
+                        for (const b of bpms) {
+                            config.chart.bpms.push({
+                                time: b.startTime,
+                                bpm: b.bpm
+                            });
+                        }
+
+                        const msg = `成功导入 BPM 列表共 ${bpms.length} 条`;
+                        logger.info(msg);
+                        onchartchanged(msg);
+                        await showDialog("提示", msg, "确定");
+                    } catch(e) {
+                        await showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                        return;
+                    }
+                };
+
+                freader.onerror = e => showDialog("错误", `发生了错误\n${e.message}`, "确定");
+                freader.readAsText(file);
+            };
         
             const AIInferThreshold = $("#edit-page-picksound-tool-import-ai-infer-threshold");
             AIInferThreshold.addEventListener("change", () => {
@@ -5917,8 +6181,44 @@ zip:
             };
             
             update();
-=======
->>>>>>> 4d875dd08c78e5d0e348767a2ff2d74d89f83ddd
+        } else if (name_match("history-auto-backups")) {
+            const backups_info = await pywebview.api.getBackupsInfo();
+            console.log(backups_info);
+            page.querySelector("#edit-page-history-auto-backups-main").innerHTML = `
+                <span>历史备份</span> <br>
+                <span>数量: ${backups_info.files.length} </span>
+                <span>总大小: ${formatFileSize(backups_info.files.reduce((acc, i) => acc + i.size, 0))} </span> <br>
+                ${backups_info.files.map((item, i) => `
+                    <span>${i+1}. 创建时间: ${item.create_time} 大小: ${formatFileSize(item.size)}</span>
+                    <button class="milbtn" style="display: inline-flex;" onclick="openBackupFile(${i})">打开</button>
+                    <br>
+                `).join("")}
+            `;
+
+            const backupRemoveDaysLimit = 10;
+            window.openBackupFile = idx => pywebview.api.openBackupFile(backups_info.files[idx].filename);
+            $("#edit-page-history-auto-backups-footer-delete-some").innerText = `删除${backupRemoveDaysLimit}天及以前的备份`;
+
+            const deleteBackups = backups => {
+                if (!backups.length) {
+                    showDialog("提示", "没有需要删除的备份文件", "确定");
+                    return;
+                }
+
+                if (confirm(`确定要删除吗? ${spwan_delete_warn(`${backups.length}个备份文件`)}`)) {
+                    pywebview.api.deleteBackups(backups.map(item => item.filename));
+                    showDialog("提示", "删除成功", "确定");
+                    into_edit_page($("#edit-page-history-auto-backups"));
+                }
+            };
+
+            window.deleteSomeAutoBackup = () => {
+                const nowtime = new Date().getTime() / 1000;
+                const backups = backups_info.files.filter(item => nowtime - item.timestamp > backupRemoveDaysLimit * 24 * 60 * 60);
+                deleteBackups(backups);
+            };
+
+            window.deleteAllAutoBackup = () => deleteBackups(backups_info.files);
         } else {
             PuginPageCallback.forEach((v, k) => {
                 if (name_match(k)) v(page, datas);
@@ -5933,6 +6233,14 @@ zip:
         })
     };
 
+    const formatFileSize = size => {
+        if (size < 1024) return `${size} B`;
+        if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
+        if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`;
+        if (size < 1024 * 1024 * 1024 * 1024) return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+        return `${(size / 1024 / 1024 / 1024 / 1024).toFixed(2)} TB`;
+    };
+
     const im2png = async im => {
         const cv = document.createElement("canvas");
         const ctx = cv.getContext("2d");
@@ -5942,9 +6250,11 @@ zip:
         return await new Promise(res => cv.toBlob(res));
     };
 
-    const saveAsJson = () => {
+    const saveAsJson = (drop_editor = true) => {
         ChartUtils.optIdx();
-        return JSON.stringify(config.chart, null, 4);
+        const export_chart = config.chart.deepcopy();
+        if (drop_editor) delete export_chart.editor;
+        return JSON.stringify(export_chart, null, 4);
     };
 
     const saveAsZip = async () => {
@@ -5987,7 +6297,7 @@ zip:
             showDialog("提示", msg, "确定");
         }
 
-        zip.file("chart.json", JSON.stringify(config.chart));
+        zip.file("chart.json", saveAsJson());
         zip.file(`audio.${config.audioext}`, await fetch(config.audio.src).then(r => r.arrayBuffer()));
         zip.file("image.png", im2png(config.illu));
         zip.file("meta.json", JSON.stringify(meta));
@@ -6058,7 +6368,7 @@ zip:
                         cus = `180 - (${cus})`;
                     }
                 }
-
+                
                 statements.push(`a(0,${e.startTime.sec.milsv},${e.endTime.sec.milsv},${e.type},${sv.milsv_s},${tv.milsv_s},${e.bearer_type},${e.bearer},${e.ease.type},${e.ease.isValueExp ? 12 : e.ease.press},${e.ease.isValueExp.milsv},${JSON.stringify(cus)})`);
             }
 
@@ -6200,6 +6510,12 @@ zip:
 
         get_es_value_filter_cache: new Map(),
         get_es_value: (es, t, deft, atype, filter) => {
+            if (atype === MIL_CES.EnumAnimationType.Transparency || atype === MIL_CES.EnumAnimationType.WholeTransparency) {
+                if (config.chart.editor.show_all_hidden_lines) {
+                    return 1.0;
+                }
+            }
+            
             if (!es.length) return deft;
             const isColor = atype === MIL_CES.EnumAnimationType.Color;
             let res = deft;
@@ -6396,7 +6712,7 @@ zip:
             return null;
         },
         nextNoteIdx: () => {
-            let maxidx = 0;
+            let maxidx = -1;
             for (const line of config.chart.lines) {
                 for (const note of line.notes) {
                     if (note.index > maxidx) maxidx = note.index;
@@ -6405,21 +6721,21 @@ zip:
             return maxidx + 1;
         },
         nextLineIdx: () => {
-            let maxidx = 0;
+            let maxidx = -1;
             for (const line of config.chart.lines) {
                 if (line.index > maxidx) maxidx = line.index;
             }
             return maxidx + 1;
         },
         nextSbIdx: () => {
-            let maxidx = 0;
+            let maxidx = -1;
             for (const sb of config.chart.storyboards) {
                 if (sb.index > maxidx) maxidx = sb.index;
             }
             return maxidx + 1;
         },
         nextEventIdx: () => {
-            let maxidx = 0;
+            let maxidx = -1;
             for (const line of config.chart.lines) {
                 for (const e of line.animations) maxidx = Math.max(maxidx, e.index);
             }
@@ -6640,6 +6956,7 @@ zip:
     var selecting_note = null;
     var selecting_event = null;
     var moving_event_st = [0, 0, 1];
+    var isCtrlKeyPressing = false;
     const mousePosUpdater = e => {
         offsetX = e.clientX;
         offsetY = e.clientY - $("#editor-on-preview").offsetTop;
@@ -6647,6 +6964,20 @@ zip:
 
     window.addEventListener("mousedown", mousePosUpdater);
     window.addEventListener("mousemove", mousePosUpdater);
+
+    window.addEventListener("keydown", e => {
+        if (e.key == "Control") {
+            isCtrlKeyPressing = true;
+            redraw = true;
+        }
+    });
+
+    window.addEventListener("keyup", e => {
+        if (e.key === "Control") {
+            isCtrlKeyPressing = false;
+            redraw = true;
+        }
+    });
 
     var boxingNote = false;
     var boxNoteStart = [-1, -1];
@@ -7093,6 +7424,21 @@ zip:
         logger.info(`结束预览${preview_back ? "并回退到" + preview_backtime : ""}`);
     });
 
+    const preEvaluateCusExpEvents = () => {
+        for (const e of ChartUtils.getAllAnimations()) {
+            if (e.ease.isValueExp) {
+                const start = e.ease.doease(0, e.start, e.end);
+                const end = e.ease.doease(1, e.start, e.end);
+                e.start = start;
+                e.end = end;
+            }
+        }
+
+        const msg = "预计算自定义表达式事件";        
+        logger.info(msg);
+        onchartchanged(msg);
+    };
+
     Object.defineProperty(Array.prototype, "value", {
         get: function () {
             return this[0] + this[1] / this[2];
@@ -7168,7 +7514,8 @@ zip:
 
     Object.defineProperty(Boolean.prototype, "milsv", {
         get: function() {
-            return this ? "!0" : "!1";
+            // 你mua的this居然是 Boolean 的实例
+            return this.valueOf() ? "!0" : "!1";
         },
         enumerable: false
     });
@@ -7192,7 +7539,7 @@ zip:
                 [p0, q0, p1, q1] = [p1, q1, b * p1 + p0, q2];
                 [n, d] = [d, n - b * d];
             }
-            k = Math.floor((limit - q0) / q1);
+            const k = Math.floor((limit - q0) / q1);
             if ((2 * d * (q1 + k * q1)) <= limit) return [a, p1, q1];
             else return [a, p0 + k * p1, q0 + k * q1];
         },
@@ -7291,8 +7638,10 @@ zip:
     $("#back-home").style.display = "none";
     $("#save").style.display = "none";
     $("#open-rain-player-unity").style.display = "none";
+    $("#open-random-window").style.display = "none";
     $("#auto-backup-label").style.display = "none";
     $("#top-bar-auto-backup-checkbox").style.display = "none";
+    $("#history-auto-backups-into-button").style.display = "none";
 
     const loadEditor = async (meta, settings) => { // webview 调的
         (async () => {
@@ -7323,9 +7672,11 @@ zip:
         $("#back-home").style.display = "inline-flex";
         $("#save").style.display = "inline-flex";
         $("#open-rain-player-unity").style.display = "inline-flex";
+        $("#open-random-window").style.display = "inline-flex";
         $("#auto-backup-label").style.display = "inline";
         $("#top-bar-auto-backup-checkbox").style.display = "inline";
         $("#top-bar-auto-backup-checkbox").checked = true;
+        $("#history-auto-backups-into-button").style.display = "flex";
 
         $("#back-home").onclick = () => window.pywebview.api.backHome();
         $("#save").onclick = () => window.pywebview.api.doSave();
@@ -7353,6 +7704,10 @@ zip:
         const chartZipUInt8Array = new Uint8Array(chartZipArrayBuffer);
         const chartZipTempUrl = await pywebview.api.createTempUrlFromString(Array.from(chartZipUInt8Array));
         window.open(`./rain-editor-extensions/rain-player-unity/index.html?chartUrl=${chartZipTempUrl}`, "_blank");
+    });
+
+    $("#open-random-window").addEventListener("click", async () => {
+        pywebview.api.openRandomWindow();
     });
 
     window.addEventListener("keydown", e => {
@@ -7416,6 +7771,11 @@ zip:
         };
         container.appendChild(apply_btn);
 
+        const io = new IntersectionObserver((entries, observer) => {
+            previewcv.isIntersecting = entries[0].isIntersecting;
+        }, { root: null, threshold: 0.0 });
+        io.observe(previewcv);
+
         const preview_update = () => {
             requestAnimationFrame(preview_update);
             
@@ -7424,6 +7784,8 @@ zip:
                 secdur = ChartUtils.beat2sec(ChartUtils.sec2beat(now_t) + pmanim.duration) - now_t;
             } catch (e) { return; }
             
+            if (currentEditPage === null || currentEditPage.id !== "edit-page-premake-anim") return;
+            if (!previewcv.isIntersecting) return;
             const ctx = previewcv.getContext("2d");
             ctx.clear();
             ctx.save();
